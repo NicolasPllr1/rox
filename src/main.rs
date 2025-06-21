@@ -1,4 +1,6 @@
+use rox::Parser;
 use rox::Scanner;
+use rox::Token;
 use std::io::{self, BufRead};
 
 use std::fs;
@@ -16,18 +18,23 @@ fn main() -> Result<(), std::io::Error> {
     Ok(())
 }
 
-fn run(source: &str) {
+fn run(source: &str) -> Vec<Token> {
     let scanner = Scanner::scan_tokens(source);
 
-    for tok in scanner.tokens {
-        println!("{tok}");
-    }
+    // for tok in scanner.tokens {
+    //     println!("{tok}");
+    // }
+
+    scanner.tokens
 }
 
 fn run_file(filename: &str) -> Result<(), std::io::Error> {
     let raw_file_content = fs::read_to_string(filename)?;
 
-    run(&raw_file_content);
+    let tokens = run(&raw_file_content);
+
+    parse(tokens);
+
     Ok(())
 }
 fn run_prompt() -> Result<(), std::io::Error> {
@@ -40,4 +47,12 @@ fn run_prompt() -> Result<(), std::io::Error> {
 
         buffer.clear();
     }
+}
+
+fn parse(tokens: Vec<Token>) {
+    let parser = Parser::parse(tokens);
+    let expr = parser.expr;
+
+    println!("\n\n------Parsed AST------\n");
+    println!("{expr:?}")
 }
