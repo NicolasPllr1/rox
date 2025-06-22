@@ -53,7 +53,10 @@ fn parse(tokens: Vec<Token>) {
     match Parser::parse(tokens) {
         Ok(expr) => {
             println!("\n\n------Success parsing the AST------\n");
-            println!("{expr:?}")
+            println!("{expr:?}");
+
+            let value = expr.evaluate();
+            println!("Value: {value:?}");
         }
         Err(err) => {
             eprintln!("\n\n------Error parsing the AST------\n");

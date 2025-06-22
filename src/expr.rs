@@ -15,9 +15,17 @@ use std::{iter::Peekable, slice::Iter};
 
 use crate::{token::TokenType, Token};
 
+#[derive(Debug, Clone)]
+pub enum LoxValue {
+    Bool(bool),
+    Nil,
+    Number(f32),
+    String(String),
+}
+
 #[derive(Debug)]
 pub enum Expr {
-    Literal(String),
+    Literal(LoxValue),
     Unary {
         op: UnaryOp,
         right: Box<Expr>,
@@ -33,8 +41,8 @@ pub enum Expr {
 pub enum BinaryOp {
     Plus,
     Minus,
-    Div,
-    Mul,
+    Slash,
+    Star,
     EqualEqual,
     BangEqual,
 }
@@ -44,8 +52,8 @@ impl From<TokenType> for BinaryOp {
         match tok_type {
             TokenType::Plus => BinaryOp::Plus,
             TokenType::Minus => BinaryOp::Minus,
-            TokenType::Slash => BinaryOp::Div,
-            TokenType::Star => BinaryOp::Mul,
+            TokenType::Slash => BinaryOp::Slash,
+            TokenType::Star => BinaryOp::Star,
             TokenType::EqualEqual => BinaryOp::EqualEqual,
             TokenType::BangEqual => BinaryOp::BangEqual,
             _ => panic!("Wrong token type for a binary operator: {tok_type}"),
@@ -67,6 +75,73 @@ impl From<TokenType> for UnaryOp {
         }
     }
 }
+
+impl Expr {
+    pub fn evaluate(&self) -> LoxValue {
+        dbg!(self);
+        match self {
+            Expr::Literal(v) => v.clone(),
+            Expr::Unary { op, right } => match op {
+                UnaryOp::Minus => {
+                    if let LoxValue::Number(n) = Expr::evaluate(right) {
+                        LoxValue::Number(-n)
+                    } else {
+                        panic!("Minus unary operator '-' expect a number operand")
+                    }
+                }
+
+                UnaryOp::Bang => {
+                    if let LoxValue::Bool(b) = Expr::evaluate(right) {
+                        LoxValue::Bool(!b)
+                    } else {
+                        panic!("Bang unary operator '!' expect a boolean operand")
+                    }
+                }
+            },
+
+            Expr::Binary { left, op, right } => match op {
+                BinaryOp::Plus => match (Expr::evaluate(left), Expr::evaluate(right)) {
+                    (LoxValue::Number(n_left), LoxValue::Number(n_right)) => {
+                        LoxValue::Number(n_left + n_right)
+                    }
+                    _ => panic!("Plus binary operator '+' expect two numbers as operands"),
+                },
+                BinaryOp::Minus => match (Expr::evaluate(left), Expr::evaluate(right)) {
+                    (LoxValue::Number(n_left), LoxValue::Number(n_right)) => {
+                        LoxValue::Number(n_left - n_right)
+                    }
+                    _ => panic!("Minus binary operator '-' expect two numbers as operands"),
+                },
+                BinaryOp::Slash => match (Expr::evaluate(left), Expr::evaluate(right)) {
+                    (LoxValue::Number(n_left), LoxValue::Number(n_right)) => {
+                        LoxValue::Number(n_left / n_right)
+                    }
+                    _ => panic!("Slash binary operator '/' expect two numbers as operands"),
+                },
+                BinaryOp::Star => match (Expr::evaluate(left), Expr::evaluate(right)) {
+                    (LoxValue::Number(n_left), LoxValue::Number(n_right)) => {
+                        LoxValue::Number(n_left * n_right)
+                    }
+                    _ => panic!("Star binary operator '*' expect two numbers as operands"),
+                },
+                BinaryOp::EqualEqual => match (Expr::evaluate(left), Expr::evaluate(right)) {
+                    (LoxValue::Bool(b_left), LoxValue::Bool(b_right)) => {
+                        LoxValue::Bool(b_left == b_right)
+                    }
+                    _ => panic!("Equality binary operator '==' expect two booleans as operands"),
+                },
+                BinaryOp::BangEqual => match (Expr::evaluate(left), Expr::evaluate(right)) {
+                    (LoxValue::Bool(b_left), LoxValue::Bool(b_right)) => {
+                        LoxValue::Bool(b_left != b_right)
+                    }
+                    _ => panic!("Inequality binary operator '!=' expect two booleans as operands"),
+                },
+            },
+            _ => panic!("not implemented yet"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct ParserError {
     msg: String,
@@ -200,15 +275,19 @@ impl Parser {
             println!("Token in primary");
             dbg!(&tok);
             match tok.token_type {
-                TokenType::Number => Ok(Expr::Literal(
+                TokenType::Number => Ok(Expr::Literal(LoxValue::Number(
+                    tok.literal
+                        .clone()
+                        .expect("Number token should have a literal")
+                        .parse()
+                        .expect("Number token should parse to a f32"),
+                ))),
+                TokenType::String => Ok(Expr::Literal(LoxValue::String(
                     tok.literal.clone().expect("String should have literal"),
-                )),
-                TokenType::String => Ok(Expr::Literal(
-                    tok.literal.clone().expect("String should have literal"),
-                )),
-                TokenType::True => Ok(Expr::Literal("true".to_string())),
-                TokenType::False => Ok(Expr::Literal("false".to_string())),
-                TokenType::Nil => Ok(Expr::Literal("Nil".to_string())),
+                ))),
+                TokenType::True => Ok(Expr::Literal(LoxValue::Bool(true))),
+                TokenType::False => Ok(Expr::Literal(LoxValue::Bool(false))),
+                TokenType::Nil => Ok(Expr::Literal(LoxValue::Nil)),
                 TokenType::LeftParen => {
                     tokens.next();
                     println!("Going to parse after the first parenth of group ...");
