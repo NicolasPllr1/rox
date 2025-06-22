@@ -18,12 +18,19 @@ use crate::{token::TokenType, Token};
 #[derive(Debug)]
 pub enum Expr {
     Literal(String),
-    Unary(Box<Unary>),
-    Binary(Box<Binary>),
-    Grouping(Box<Grouping>),
+    Unary {
+        op: UnaryOp,
+        right: Box<Expr>,
+    },
+    Binary {
+        left: Box<Expr>,
+        op: BinaryOp,
+        right: Box<Expr>,
+    },
+    Grouping(Box<Expr>),
 }
 #[derive(Debug)]
-enum BinOperator {
+pub enum BinaryOp {
     Plus,
     Minus,
     Div,
@@ -32,39 +39,22 @@ enum BinOperator {
     BangEqual,
 }
 
-impl From<TokenType> for BinOperator {
-    fn from(tok_type: TokenType) -> BinOperator {
+impl From<TokenType> for BinaryOp {
+    fn from(tok_type: TokenType) -> BinaryOp {
         match tok_type {
-            TokenType::Plus => BinOperator::Plus,
-            TokenType::Minus => BinOperator::Minus,
-            TokenType::Slash => BinOperator::Div,
-            TokenType::Star => BinOperator::Mul,
-            TokenType::EqualEqual => BinOperator::EqualEqual,
-            TokenType::BangEqual => BinOperator::BangEqual,
+            TokenType::Plus => BinaryOp::Plus,
+            TokenType::Minus => BinaryOp::Minus,
+            TokenType::Slash => BinaryOp::Div,
+            TokenType::Star => BinaryOp::Mul,
+            TokenType::EqualEqual => BinaryOp::EqualEqual,
+            TokenType::BangEqual => BinaryOp::BangEqual,
             _ => panic!("Wrong token type for a binary operator: {tok_type}"),
         }
     }
 }
 
 #[derive(Debug)]
-pub struct Binary {
-    left: Expr,
-    op: BinOperator,
-    right: Expr,
-}
-
-#[derive(Debug)]
-pub struct Grouping {
-    expr: Expr,
-}
-
-#[derive(Debug)]
-pub struct Literal {
-    value: String,
-}
-
-#[derive(Debug)]
-enum UnaryOp {
+pub enum UnaryOp {
     Bang,
     Minus,
 }
@@ -77,12 +67,6 @@ impl From<TokenType> for UnaryOp {
         }
     }
 }
-#[derive(Debug)]
-pub struct Unary {
-    op: UnaryOp,
-    right: Expr,
-}
-
 #[derive(Debug)]
 pub struct ParserError {
     msg: String,
@@ -111,10 +95,10 @@ impl Parser {
             match tok.token_type {
                 TokenType::EqualEqual | TokenType::BangEqual => {
                     tokens.next();
-                    let left = expr;
-                    let op = BinOperator::from(tok.token_type);
-                    let right = Parser::comparaison(tokens)?;
-                    expr = Expr::Binary(Box::new(Binary { left, op, right }));
+                    let left = Box::new(expr);
+                    let op = BinaryOp::from(tok.token_type);
+                    let right = Box::new(Parser::comparaison(tokens)?);
+                    expr = Expr::Binary { left, op, right };
                 }
                 _ => break,
             };
@@ -139,10 +123,10 @@ impl Parser {
                 | TokenType::Greater
                 | TokenType::GreaterEqual => {
                     tokens.next();
-                    let left = expr;
-                    let op = BinOperator::from(tok.token_type);
-                    let right = Parser::comparaison(tokens)?;
-                    expr = Expr::Binary(Box::new(Binary { left, op, right }));
+                    let left = Box::new(expr);
+                    let op = BinaryOp::from(tok.token_type);
+                    let right = Box::new(Parser::comparaison(tokens)?);
+                    expr = Expr::Binary { left, op, right };
                 }
                 _ => break,
             };
@@ -160,10 +144,10 @@ impl Parser {
             match tok.token_type {
                 TokenType::Plus | TokenType::Minus => {
                     tokens.next();
-                    let left = expr;
-                    let op = BinOperator::from(tok.token_type);
-                    let right = Parser::comparaison(tokens)?;
-                    expr = Expr::Binary(Box::new(Binary { left, op, right }));
+                    let left = Box::new(expr);
+                    let op = BinaryOp::from(tok.token_type);
+                    let right = Box::new(Parser::comparaison(tokens)?);
+                    expr = Expr::Binary { left, op, right };
                 }
                 _ => break,
             };
@@ -181,10 +165,10 @@ impl Parser {
             match tok.token_type {
                 TokenType::Slash | TokenType::Star => {
                     tokens.next();
-                    let left = expr;
-                    let op = BinOperator::from(tok.token_type);
-                    let right = Parser::comparaison(tokens)?;
-                    expr = Expr::Binary(Box::new(Binary { left, op, right }));
+                    let left = Box::new(expr);
+                    let op = BinaryOp::from(tok.token_type);
+                    let right = Box::new(Parser::comparaison(tokens)?);
+                    expr = Expr::Binary { left, op, right };
                 }
                 _ => break,
             };
@@ -203,8 +187,8 @@ impl Parser {
             {
                 tokens.next();
                 let op = UnaryOp::from(tok.token_type);
-                let right = Parser::unary(tokens)?;
-                Ok(Expr::Unary(Box::new(Unary { op, right })))
+                let right = Box::new(Parser::unary(tokens)?);
+                Ok(Expr::Unary { op, right })
             }
             _ => Parser::primary(tokens),
         }
@@ -234,7 +218,7 @@ impl Parser {
                         Some(&tok) if tok.token_type == TokenType::RightParen => (),
                         _ => panic!("Expect right parenthesis after expression. Got {tok}"),
                     };
-                    Ok(Expr::Grouping(Box::new(Grouping { expr })))
+                    Ok(Expr::Grouping(Box::new(expr)))
                 }
                 _ => Err(ParserError {
                     msg: "Expect expression".into(),
