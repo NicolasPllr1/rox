@@ -83,30 +83,29 @@ pub struct Unary {
     right: Expr,
 }
 
-pub struct ParserError {}
-
-pub struct Parser {
-    pub expr: Expr, // parsed tokens
-    pub errors: Option<Vec<ParserError>>,
+#[derive(Debug)]
+pub struct ParserError {
+    msg: String,
+    tok: Token,
 }
 
-impl Parser {
-    pub fn parse(tokens: Vec<Token>) -> Parser {
-        let mut tokens = tokens.iter().peekable();
-        let expr = Parser::expression(&mut tokens);
+pub struct Parser {}
 
-        Parser { expr, errors: None }
+impl Parser {
+    pub fn parse(tokens: Vec<Token>) -> Result<Expr, ParserError> {
+        let mut tokens = tokens.iter().peekable();
+        Parser::expression(&mut tokens)
     }
 
-    fn expression(tokens: &mut Peekable<Iter<Token>>) -> Expr {
+    fn expression(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
         println!("expression");
 
         Parser::equality(tokens)
     }
-    fn equality(tokens: &mut Peekable<Iter<Token>>) -> Expr {
+    fn equality(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
         println!("equality");
 
-        let mut expr = Parser::comparaison(tokens);
+        let mut expr = Parser::comparaison(tokens)?;
 
         while let Some(&tok) = tokens.peek() {
             match tok.token_type {
@@ -114,20 +113,24 @@ impl Parser {
                     tokens.next();
                     let left = expr;
                     let op = BinOperator::from(tok.token_type);
-                    let right = Parser::comparaison(tokens);
+                    let right = Parser::comparaison(tokens)?;
                     expr = Expr::Binary(Box::new(Binary { left, op, right }));
                 }
                 _ => break,
             };
         }
 
-        expr
+        Ok(expr)
     }
 
-    fn comparaison(tokens: &mut Peekable<Iter<Token>>) -> Expr {
+    // NOTE: why the mistake of () instead of break in both equality and comparaison make the
+    // program hangs on the test example ?
+    // NOTE: understand the need for references around the peekable tokens and in Some(&tok) =
+    // tokens.peek()
+    fn comparaison(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
         println!("comparaison");
 
-        let mut expr = Parser::term(tokens);
+        let mut expr = Parser::term(tokens)?;
 
         while let Some(&tok) = tokens.peek() {
             match tok.token_type {
@@ -138,19 +141,19 @@ impl Parser {
                     tokens.next();
                     let left = expr;
                     let op = BinOperator::from(tok.token_type);
-                    let right = Parser::comparaison(tokens);
+                    let right = Parser::comparaison(tokens)?;
                     expr = Expr::Binary(Box::new(Binary { left, op, right }));
                 }
                 _ => break,
             };
         }
 
-        expr
+        Ok(expr)
     }
-    fn term(tokens: &mut Peekable<Iter<Token>>) -> Expr {
+    fn term(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
         println!("term");
 
-        let mut expr = Parser::factor(tokens);
+        let mut expr = Parser::factor(tokens)?;
         println!("In term, after we got the expr: {expr:?}");
 
         while let Some(&tok) = tokens.peek() {
@@ -159,19 +162,19 @@ impl Parser {
                     tokens.next();
                     let left = expr;
                     let op = BinOperator::from(tok.token_type);
-                    let right = Parser::comparaison(tokens);
+                    let right = Parser::comparaison(tokens)?;
                     expr = Expr::Binary(Box::new(Binary { left, op, right }));
                 }
                 _ => break,
             };
         }
 
-        expr
+        Ok(expr)
     }
-    fn factor(tokens: &mut Peekable<Iter<Token>>) -> Expr {
+    fn factor(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
         println!("factor");
 
-        let mut expr = Parser::unary(tokens);
+        let mut expr = Parser::unary(tokens)?;
         println!("In factor, after we got the expr: {expr:?}");
 
         while let Some(&tok) = tokens.peek() {
@@ -180,7 +183,7 @@ impl Parser {
                     tokens.next();
                     let left = expr;
                     let op = BinOperator::from(tok.token_type);
-                    let right = Parser::comparaison(tokens);
+                    let right = Parser::comparaison(tokens)?;
                     expr = Expr::Binary(Box::new(Binary { left, op, right }));
                 }
                 _ => break,
@@ -189,9 +192,9 @@ impl Parser {
 
         println!("Returning this exp to term: {expr:?}");
         tokens.next();
-        expr
+        Ok(expr)
     }
-    fn unary(tokens: &mut Peekable<Iter<Token>>) -> Expr {
+    fn unary(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
         println!("unary");
 
         match tokens.peek() {
@@ -200,43 +203,46 @@ impl Parser {
             {
                 tokens.next();
                 let op = UnaryOp::from(tok.token_type);
-                let right = Parser::unary(tokens);
-                Expr::Unary(Box::new(Unary { op, right }))
+                let right = Parser::unary(tokens)?;
+                Ok(Expr::Unary(Box::new(Unary { op, right })))
             }
             _ => Parser::primary(tokens),
         }
     }
-    fn primary(tokens: &mut Peekable<Iter<Token>>) -> Expr {
+    fn primary(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
         println!("primary");
 
         if let Some(&tok) = tokens.peek() {
             println!("Token in primary");
             dbg!(&tok);
             match tok.token_type {
-                TokenType::Number => {
-                    Expr::Literal(tok.literal.clone().expect("String should have literal"))
-                }
-                TokenType::String => {
-                    Expr::Literal(tok.literal.clone().expect("String should have literal"))
-                }
-                TokenType::True => Expr::Literal("true".to_string()),
-                TokenType::False => Expr::Literal("false".to_string()),
-                TokenType::Nil => Expr::Literal("Nil".to_string()),
+                TokenType::Number => Ok(Expr::Literal(
+                    tok.literal.clone().expect("String should have literal"),
+                )),
+                TokenType::String => Ok(Expr::Literal(
+                    tok.literal.clone().expect("String should have literal"),
+                )),
+                TokenType::True => Ok(Expr::Literal("true".to_string())),
+                TokenType::False => Ok(Expr::Literal("false".to_string())),
+                TokenType::Nil => Ok(Expr::Literal("Nil".to_string())),
                 TokenType::LeftParen => {
                     tokens.next();
                     println!("Going to parse after the first parenth of group ...");
-                    let expr = Parser::expression(tokens);
+                    let expr = Parser::expression(tokens)?;
                     println!("After expr parsed within group");
                     match tokens.peek() {
                         Some(&tok) if tok.token_type == TokenType::RightParen => (),
                         _ => panic!("Expect right parenthesis after expression. Got {tok}"),
                     };
-                    Expr::Grouping(Box::new(Grouping { expr }))
+                    Ok(Expr::Grouping(Box::new(Grouping { expr })))
                 }
-                _ => panic!("Unexpected token in primary: {tok}"),
+                _ => Err(ParserError {
+                    msg: "Expect expression".into(),
+                    tok: tok.clone(), // NOTE: after cloning, no need to dereference with *, why?
+                }),
             }
         } else {
-            panic!("Expected a token for primary, but got none")
+            panic!("expect expression a token for primary, but got none")
         }
     }
 

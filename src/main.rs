@@ -50,9 +50,14 @@ fn run_prompt() -> Result<(), std::io::Error> {
 }
 
 fn parse(tokens: Vec<Token>) {
-    let parser = Parser::parse(tokens);
-    let expr = parser.expr;
-
-    println!("\n\n------Parsed AST------\n");
-    println!("{expr:?}")
+    match Parser::parse(tokens) {
+        Ok(expr) => {
+            println!("\n\n------Success parsing the AST------\n");
+            println!("{expr:?}")
+        }
+        Err(err) => {
+            eprintln!("\n\n------Error parsing the AST------\n");
+            eprintln!("{err:?}")
+        }
+    }
 }
