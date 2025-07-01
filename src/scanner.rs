@@ -164,11 +164,11 @@ impl Scanner {
                         && tokens[tokens.len() - 2].token_type == TokenType::Number
                         && !tokens[tokens.len() - 2].lexeme.contains(".")
                     // don't want
-                    // last number to already be interger.decimal
+                    // last number to already be integer.decimal
                     {
                         // Number is of the form {integer}.{decimal}
                         let _dot = tokens.pop().unwrap(); // TODO: (nico) I "know" unwrap should
-                                                          // not err here as the if statement checks for existance. Better way to
+                                                          // not err here as the if statement checks for existence. Better way to
                                                           // write this ?
                         let integer_part = tokens.pop().unwrap().lexeme;
                         let decimal_part = &source[start..current_idx + 1];
@@ -183,7 +183,7 @@ impl Scanner {
                 }
                 TokenType::Identifier => {
                     let lexeme = &source[start..current_idx + 1];
-                    // maximal munch: literal or reseverd keywords ?
+                    // maximal munch: literal or reserved keywords ?
                     token_type = *str_to_keywords
                         .get(lexeme)
                         .unwrap_or(&TokenType::Identifier);

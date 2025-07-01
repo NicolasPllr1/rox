@@ -26,7 +26,7 @@ pub enum TokenType {
     GreaterEqual,
     Less,
     LessEqual,
-    // Litterals
+    // Literals
     Identifier,
     String,
     Number,
@@ -73,7 +73,7 @@ impl fmt::Display for TokenType {
             Self::GreaterEqual => "GREATER_EQUAL",
             Self::Less => "LESS",
             Self::LessEqual => "LESS_EQUAL",
-            // Litterals
+            // Literals
             Self::Identifier => "IDENTIFIER",
             Self::String => "STRING",
             Self::Number => "NUMBER",

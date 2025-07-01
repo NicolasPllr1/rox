@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 // use crate::token::{Token, TokenType};
-// Lox grammer, form lowest to highest precedance priority:
+// Lox grammar, from lowest to highest precedence priority:
 //
 // program -> statement* EOF ;
 //
@@ -9,8 +9,8 @@
 // printStmt -> "print" expression ";" ;
 //
 // expression -> equality ;
-// equality -> comparaison ( ("!=" | "==" ) comparaison )* ;
-// comparaison -> term ( (">" | ">=" | "<" | "<=") term )* ;
+// equality -> comparison ( ("!=" | "==" ) comparison )* ;
+// comparison -> term ( (">" | ">=" | "<" | "<=") term )* ;
 // term -> factor ( ("-" | "+" ) factor )* ;
 // factor -> unary ( ("/" | "*" ) unary )* ;
 // unary -> ("!" | "-") unary | primary ;
@@ -264,7 +264,7 @@ impl Parser {
     fn equality(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
         println!("equality");
 
-        let mut expr = Parser::comparaison(tokens)?;
+        let mut expr = Parser::comparison(tokens)?;
 
         while let Some(&tok) = tokens.peek() {
             match tok.token_type {
@@ -272,7 +272,7 @@ impl Parser {
                     tokens.next();
                     let left = Box::new(expr);
                     let op = BinaryOp::from(tok.token_type);
-                    let right = Box::new(Parser::comparaison(tokens)?);
+                    let right = Box::new(Parser::comparison(tokens)?);
                     expr = Expr::Binary { left, op, right };
                 }
                 _ => break,
@@ -282,12 +282,12 @@ impl Parser {
         Ok(expr)
     }
 
-    // NOTE: why the mistake of () instead of break in both equality and comparaison make the
+    // NOTE: why the mistake of () instead of break in both equality and comparison make the
     // program hangs on the test example ?
     // NOTE: understand the need for references around the peekable tokens and in Some(&tok) =
     // tokens.peek()
-    fn comparaison(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
-        println!("comparaison");
+    fn comparison(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+        println!("comparison");
 
         let mut expr = Parser::term(tokens)?;
 
@@ -321,7 +321,7 @@ impl Parser {
                     tokens.next();
                     let left = Box::new(expr);
                     let op = BinaryOp::from(tok.token_type);
-                    let right = Box::new(Parser::comparaison(tokens)?);
+                    let right = Box::new(Parser::comparison(tokens)?);
                     expr = Expr::Binary { left, op, right };
                 }
                 _ => break,
@@ -342,7 +342,7 @@ impl Parser {
                     tokens.next();
                     let left = Box::new(expr);
                     let op = BinaryOp::from(tok.token_type);
-                    let right = Box::new(Parser::comparaison(tokens)?);
+                    let right = Box::new(Parser::comparison(tokens)?);
                     expr = Expr::Binary { left, op, right };
                 }
                 _ => break,
