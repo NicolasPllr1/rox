@@ -134,7 +134,11 @@ impl Scanner {
                 }
                 l if l.is_alphabetic() || l == '_' => {
                     while let Some((_, nxt_l)) = chars.peek() {
-                        if *nxt_l != ' ' && *nxt_l != '/' && !nxt_l.is_ascii_control() {
+                        if *nxt_l != ' '
+                            && *nxt_l != '/'
+                            && !nxt_l.is_ascii_control()
+                            && *nxt_l != ';'
+                        {
                             chars.next();
                             current_idx += 1;
                         } else {
@@ -148,11 +152,6 @@ impl Scanner {
                     continue;
                 }
             };
-
-            // dbg!(&token_type);
-            // dbg!(start);
-            // dbg!(current_idx);
-            // dbg!(source);
 
             let lexeme = match token_type {
                 TokenType::String => &source[start..current_idx + 1], // include quotations marks
@@ -192,7 +191,6 @@ impl Scanner {
                 }
                 _ => &source[start..current_idx + 1],
             };
-            // dbg!(lexeme);
 
             let literal = match token_type {
                 TokenType::String => match lexeme.len() {
@@ -300,7 +298,6 @@ mod tests {
             line: 1,
         }]; // comments are ignored by the parser (~skipped)
 
-        dbg!(&toks);
         assert!(toks == gt);
     }
     #[test]
@@ -332,7 +329,6 @@ mod tests {
             },
         ];
 
-        dbg!(&toks);
         assert!(toks == gt);
     }
 
@@ -358,7 +354,7 @@ mod tests {
                 line: 1,
             },
         ];
-        dbg!(&toks);
+
         assert!(toks == gt);
     }
 
@@ -377,7 +373,6 @@ mod tests {
             line: 1,
         }];
 
-        dbg!(&toks);
         assert!(toks == gt);
     }
 

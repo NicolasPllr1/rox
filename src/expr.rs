@@ -2,6 +2,12 @@
 // use crate::token::{Token, TokenType};
 // Lox grammer, form lowest to highest precedance priority:
 //
+// program -> statement* EOF ;
+//
+// statement -> exprStmt | printstmt ;
+// exprStmt -> expression ";" ;
+// printStmt -> "print" expression ";" ;
+//
 // expression -> equality ;
 // equality -> comparaison ( ("!=" | "==" ) comparaison )* ;
 // comparaison -> term ( (">" | ">=" | "<" | "<=") term )* ;
@@ -39,8 +45,10 @@ pub enum Expr {
 }
 #[derive(Debug)]
 pub enum BinaryOp {
+    And,
     Plus,
     Minus,
+    Or,
     Slash,
     Star,
     EqualEqual,
@@ -50,8 +58,10 @@ pub enum BinaryOp {
 impl From<TokenType> for BinaryOp {
     fn from(tok_type: TokenType) -> BinaryOp {
         match tok_type {
+            TokenType::And => BinaryOp::And,
             TokenType::Plus => BinaryOp::Plus,
             TokenType::Minus => BinaryOp::Minus,
+            TokenType::Or => BinaryOp::Or,
             TokenType::Slash => BinaryOp::Slash,
             TokenType::Star => BinaryOp::Star,
             TokenType::EqualEqual => BinaryOp::EqualEqual,
@@ -78,7 +88,6 @@ impl From<TokenType> for UnaryOp {
 
 impl Expr {
     pub fn evaluate(&self) -> LoxValue {
-        dbg!(self);
         match self {
             Expr::Literal(v) => v.clone(),
             Expr::Unary { op, right } => match op {
@@ -136,8 +145,21 @@ impl Expr {
                     }
                     _ => panic!("Inequality binary operator '!=' expect two booleans as operands"),
                 },
+                BinaryOp::And => match (Expr::evaluate(left), Expr::evaluate(right)) {
+                    (LoxValue::Bool(b_left), LoxValue::Bool(b_right)) => {
+                        LoxValue::Bool(b_left && b_right)
+                    }
+                    _ => panic!("And binary operator 'and' expect two booleans as operands"),
+                },
+
+                BinaryOp::Or => match (Expr::evaluate(left), Expr::evaluate(right)) {
+                    (LoxValue::Bool(b_left), LoxValue::Bool(b_right)) => {
+                        LoxValue::Bool(b_left || b_right)
+                    }
+                    _ => panic!("And binary operator 'and' expect two booleans as operands"),
+                },
             },
-            _ => panic!("not implemented yet"),
+            Expr::Grouping(expr) => expr.evaluate(),
         }
     }
 }
@@ -145,15 +167,93 @@ impl Expr {
 #[derive(Debug)]
 pub struct ParserError {
     msg: String,
-    tok: Token,
+    tok: Option<Token>,
+}
+
+#[derive(Debug)]
+pub enum Stmt {
+    ExprStmt(Expr),
+    PrintStmt(Expr),
+}
+
+impl Stmt {
+    pub fn evaluate(&self) -> LoxValue {
+        match self {
+            Stmt::ExprStmt(expr) => {
+                let _expr = expr.evaluate();
+                LoxValue::Nil
+            }
+            Stmt::PrintStmt(expr) => {
+                let val = expr.evaluate();
+                println!("{val:?}");
+                LoxValue::Nil
+            }
+        }
+    }
 }
 
 pub struct Parser {}
 
 impl Parser {
-    pub fn parse(tokens: Vec<Token>) -> Result<Expr, ParserError> {
+    pub fn parse(tokens: Vec<Token>) -> Result<Vec<Stmt>, ParserError> {
         let mut tokens = tokens.iter().peekable();
-        Parser::expression(&mut tokens)
+        let mut statements = Vec::new();
+        while let Some(&tok) = tokens.peek() {
+            if tok.token_type == TokenType::Eof {
+                return Ok(statements);
+            }
+
+            let stmt = Parser::statement(&mut tokens)?;
+            statements.push(stmt);
+        }
+        Err(ParserError {
+            msg: "expects tokens to end with a EOF token".into(),
+            tok: None,
+        })
+    }
+
+    fn statement(tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
+        println!("statement");
+
+        match tokens.peek() {
+            Some(tok) if tok.token_type == TokenType::Print => {
+                tokens.next();
+                Ok(Stmt::PrintStmt(Parser::print_stmt(tokens)?))
+            }
+            Some(_) => Ok(Stmt::PrintStmt(Parser::expr_stmt(tokens)?)),
+            None => panic!("Statement expects a token"),
+        }
+    }
+
+    fn print_stmt(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+        let expr = Parser::expression(tokens)?;
+
+        match tokens.peek() {
+            Some(&tok) if tok.token_type == TokenType::Semicolon => {
+                tokens.next();
+                Ok(expr)
+            }
+            Some(&tok) => Err(ParserError {
+                msg: "print statement expects semicolon at the end".into(),
+                tok: Some(tok.clone()),
+            }),
+            _ => panic!("print statement expect semicolon at the end, got no token at all"),
+        }
+    }
+    fn expr_stmt(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+        let expr = Parser::expression(tokens)?;
+
+        match tokens.peek() {
+            Some(&tok) if tok.token_type == TokenType::Semicolon => {
+                tokens.next();
+                Ok(expr)
+            }
+            Some(&tok) => Err(ParserError {
+                msg: "expression statement expects semicolon at the end".into(),
+                tok: Some(tok.clone()),
+            }),
+            _ => panic!("expression statement expect semicolon at the end, got no token at all"),
+        }
     }
 
     fn expression(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
@@ -200,7 +300,7 @@ impl Parser {
                     tokens.next();
                     let left = Box::new(expr);
                     let op = BinaryOp::from(tok.token_type);
-                    let right = Box::new(Parser::comparaison(tokens)?);
+                    let right = Box::new(Parser::term(tokens)?);
                     expr = Expr::Binary { left, op, right };
                 }
                 _ => break,
@@ -272,8 +372,6 @@ impl Parser {
         println!("primary");
 
         if let Some(&tok) = tokens.peek() {
-            println!("Token in primary");
-            dbg!(&tok);
             match tok.token_type {
                 TokenType::Number => Ok(Expr::Literal(LoxValue::Number(
                     tok.literal
@@ -301,7 +399,7 @@ impl Parser {
                 }
                 _ => Err(ParserError {
                     msg: "Expect expression".into(),
-                    tok: tok.clone(), // NOTE: after cloning, no need to dereference with *, why?
+                    tok: Some(tok.clone()), // NOTE: after cloning, no need to dereference with *, why?
                 }),
             }
         } else {

@@ -33,6 +33,8 @@ fn run_file(filename: &str) -> Result<(), std::io::Error> {
 
     let tokens = run(&raw_file_content);
 
+    println!("Tokens\n:{tokens:?}");
+
     parse(tokens);
 
     Ok(())
@@ -50,17 +52,11 @@ fn run_prompt() -> Result<(), std::io::Error> {
 }
 
 fn parse(tokens: Vec<Token>) {
-    match Parser::parse(tokens) {
-        Ok(expr) => {
-            println!("\n\n------Success parsing the AST------\n");
-            println!("{expr:?}");
+    let statements =
+        Parser::parse(tokens).expect("tokens should map correctly to a list of statements");
 
-            let value = expr.evaluate();
-            println!("Value: {value:?}");
-        }
-        Err(err) => {
-            eprintln!("\n\n------Error parsing the AST------\n");
-            eprintln!("{err:?}")
-        }
+    // let _ = statements.into_iter().map(|stmt| stmt.evaluate());
+    for stmt in statements {
+        let _val = stmt.evaluate();
     }
 }
