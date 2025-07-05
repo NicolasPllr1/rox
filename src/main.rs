@@ -1,3 +1,4 @@
+use rox::Env;
 use rox::Parser;
 use rox::Scanner;
 use rox::Token;
@@ -33,7 +34,7 @@ fn run_file(filename: &str) -> Result<(), std::io::Error> {
 
     let tokens = run(&raw_file_content);
 
-    println!("Tokens\n:{tokens:?}");
+    println!("Tokens:\n{tokens:?}\n");
 
     parse(tokens);
 
@@ -52,11 +53,19 @@ fn run_prompt() -> Result<(), std::io::Error> {
 }
 
 fn parse(tokens: Vec<Token>) {
-    let statements =
+    let declarations =
         Parser::parse(tokens).expect("tokens should map correctly to a list of statements");
 
-    // let _ = statements.into_iter().map(|stmt| stmt.evaluate());
-    for stmt in statements {
-        let _val = stmt.evaluate();
+    println!("Declarations:");
+    for decl in &declarations {
+        println!("{decl:?}");
     }
+
+    let mut env = Env::new();
+
+    for decl in declarations {
+        let _val = decl.evaluate(&mut env);
+    }
+
+    println!("\nEnvironement:\n{env:?}");
 }
