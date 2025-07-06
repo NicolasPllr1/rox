@@ -35,61 +35,9 @@ impl Parser {
         match tokens.peek() {
             Some(&tok) if tok.token_type == TokenType::Var => {
                 tokens.next();
-                let (name, initializer) = Parser::var_decl(tokens)?;
-                let decl = Declaration::VarDecl { name, initializer };
-
-                match tokens.peek() {
-                    Some(&after_tok) if after_tok.token_type == TokenType::Semicolon => {
-                        tokens.next(); // consume the semicolon
-                        Ok(decl)
-                    }
-                    Some(&not_semicolon) => Err(ParserError {
-                        msg: "variable declaration expects to end with a semicolon".to_owned(),
-                        tok: Some(not_semicolon.clone()),
-                    }),
-                    None => Err(ParserError {
-                        msg: "declaration expects a token".to_owned(),
-                        tok: None,
-                    }),
-                }
+                Parser::var_decl(tokens)
             }
-            Some(&tok) if tok.token_type == TokenType::LeftBrace => {
-                tokens.next(); // consume left brace
-                let stmts_in_block = Parser::block(tokens)?;
-
-                match tokens.peek() {
-                    Some(&after_tok) if after_tok.token_type == TokenType::RightBrace => {
-                        tokens.next(); // consume the right brace
-                        Ok(Declaration::Block(stmts_in_block))
-                    }
-                    Some(&not_right_brace) => Err(ParserError {
-                        msg: "block declaration expects to end with a right brace".to_owned(),
-                        tok: Some(not_right_brace.clone()),
-                    }),
-                    None => Err(ParserError {
-                        msg: "block declaration expects to end with a right brace".to_owned(),
-                        tok: None,
-                    }),
-                }
-            }
-            Some(_) => {
-                let decl = Declaration::StmtDecl(Parser::statement(tokens)?);
-
-                match tokens.peek() {
-                    Some(&after_tok) if after_tok.token_type == TokenType::Semicolon => {
-                        tokens.next(); // consume the semicolon
-                        Ok(decl)
-                    }
-                    Some(&not_semicolon) => Err(ParserError {
-                        msg: "declaration expects to end with a semicolon".to_owned(),
-                        tok: Some(not_semicolon.clone()),
-                    }),
-                    None => Err(ParserError {
-                        msg: "declaration expects a token".to_owned(),
-                        tok: None,
-                    }),
-                }
-            }
+            Some(_) => Ok(Declaration::StmtDecl(Parser::statement(tokens)?)),
             None => Err(ParserError {
                 msg: "declaration expects a token".to_owned(),
                 tok: None,
@@ -97,22 +45,63 @@ impl Parser {
         }
     }
 
-    fn var_decl(tokens: &mut Peekable<Iter<Token>>) -> Result<(Token, Option<Expr>), ParserError> {
+    fn var_decl(tokens: &mut Peekable<Iter<Token>>) -> Result<Declaration, ParserError> {
         // var just got consumed
         // pattern is: var IDENTIFIER (= expr)? ";"
-        match tokens.peek() {
+        let var_decl = match tokens.peek() {
             Some(&name_tok) if name_tok.token_type == TokenType::Identifier => {
                 tokens.next();
                 match tokens.peek() {
                     Some(&tok) if tok.token_type == TokenType::Equal => {
                         tokens.next();
                         let initializer = Parser::expression(tokens)?;
-                        Ok((name_tok.clone(), Some(initializer)))
+                        Declaration::VarDecl {
+                            name: name_tok.clone(),
+                            initializer: Some(initializer),
+                        }
                     }
-                    _ => Ok((name_tok.clone(), None)),
+                    _ => Declaration::VarDecl {
+                        name: name_tok.clone(),
+                        initializer: None,
+                    },
                 }
             }
             _ => panic!("Variable declaration expects identifier after 'var' keyword"),
+        };
+        match tokens.peek() {
+            Some(&after_tok) if after_tok.token_type == TokenType::Semicolon => {
+                tokens.next(); // consume the semicolon
+                Ok(var_decl)
+            }
+            Some(&not_semicolon) => Err(ParserError {
+                msg: "variable declaration expects to end with a semicolon".to_owned(),
+                tok: Some(not_semicolon.clone()),
+            }),
+            None => Err(ParserError {
+                msg: "variable declaration expects to end with a semicolon, but got none"
+                    .to_owned(),
+                tok: None,
+            }),
+        }
+    }
+
+    fn check_next_token_type(
+        tokens: &mut Peekable<Iter<Token>>,
+        nxt_expected_type: TokenType,
+    ) -> Result<(), ParserError> {
+        match tokens.peek() {
+            Some(&after_tok) if after_tok.token_type == nxt_expected_type => {
+                tokens.next(); // consume the semicolon
+                Ok(())
+            }
+            Some(&not_semicolon) => Err(ParserError {
+                msg: "expects to end with a semicolon".to_owned(),
+                tok: Some(not_semicolon.clone()),
+            }),
+            None => Err(ParserError {
+                msg: "expects to end with a semicolon, but got none".to_owned(),
+                tok: None,
+            }),
         }
     }
 
@@ -120,9 +109,37 @@ impl Parser {
         match tokens.peek() {
             Some(tok) if tok.token_type == TokenType::Print => {
                 tokens.next();
-                Ok(Stmt::PrintStmt(Parser::print_stmt(tokens)?))
+                let print_stmt = Parser::print_stmt(tokens)?;
+                match Parser::check_next_token_type(tokens, TokenType::Semicolon) {
+                    Ok(()) => Ok(Stmt::PrintStmt(print_stmt)),
+                    Err(e) => Err(ParserError {
+                        msg: "print statement expects to end with a semicolon".to_owned(),
+                        tok: e.tok,
+                    }),
+                }
             }
-            Some(_) => Ok(Stmt::PrintStmt(Parser::expr_stmt(tokens)?)),
+            Some(&tok) if tok.token_type == TokenType::LeftBrace => {
+                tokens.next(); // consume left brace
+                let stmts_in_block = Parser::block(tokens)?;
+
+                match Parser::check_next_token_type(tokens, TokenType::RightBrace) {
+                    Ok(()) => Ok(Stmt::Block(stmts_in_block)),
+                    Err(e) => Err(ParserError {
+                        msg: "block statement expects to end with a right brace".to_owned(),
+                        tok: e.tok,
+                    }),
+                }
+            }
+            Some(_) => {
+                let expr_stmt = Parser::expr_stmt(tokens)?;
+                match Parser::check_next_token_type(tokens, TokenType::Semicolon) {
+                    Ok(()) => Ok(Stmt::ExprStmt(expr_stmt)),
+                    Err(e) => Err(ParserError {
+                        msg: "print statement expects to end with a semicolon".to_owned(),
+                        tok: e.tok,
+                    }),
+                }
+            }
             None => panic!("Statement expects a token"),
         }
     }

@@ -100,6 +100,7 @@ impl From<TokenType> for UnaryOp {
 pub enum Stmt {
     ExprStmt(Expr),
     PrintStmt(Expr),
+    Block(Vec<Declaration>),
 }
 
 #[derive(Debug)]
@@ -109,5 +110,4 @@ pub enum Declaration {
         name: Token,
         initializer: Option<Expr>,
     },
-    Block(Vec<Declaration>),
 }

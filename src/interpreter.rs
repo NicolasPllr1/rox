@@ -33,20 +33,6 @@ impl Interpreter {
                 self.env.define(&name.lexeme, value);
                 LoxValue::Nil
             }
-            Declaration::Block(declarations) => {
-                // create new env and evaluate all inner statements in it
-                let original_env = self.env.clone();
-                let block_env = Env::new_from(&self.env);
-
-                // intepret declarations in the block with the new nested env
-                self.env = block_env;
-                for decl in declarations {
-                    self.evaluate_decl(decl);
-                }
-
-                self.env = original_env.clone(); // restaure interpreter original env
-                LoxValue::Nil
-            }
         }
     }
 
@@ -59,6 +45,21 @@ impl Interpreter {
             Stmt::PrintStmt(expr) => {
                 let val = self.evaluate_expr(expr);
                 println!("{val:?}");
+                LoxValue::Nil
+            }
+
+            Stmt::Block(declarations) => {
+                // create new env and evaluate all inner statements in it
+                let original_env = self.env.clone();
+                let block_env = Env::new_from(&self.env);
+
+                // intepret declarations in the block with the new nested env
+                self.env = block_env;
+                for decl in declarations {
+                    self.evaluate_decl(decl);
+                }
+
+                self.env = original_env.clone(); // restaure interpreter original env
                 LoxValue::Nil
             }
         }
