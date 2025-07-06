@@ -4,14 +4,14 @@ use crate::token::{Token, TokenType};
 //
 // program -> declaration* EOF ;
 //
-// declaration -> varDecl | statement | block ;
+// declaration -> varDecl | statement;
 //
 // varDecl -> "var" + IDENTIFIER ( "=" expression )? ";" ;
-// statement -> exprStmt | printstmt ;
-// block -> "{" + declaration* + "}" ;
+// statement -> exprStmt | printstmt | block ;
 //
 // exprStmt -> expression ";" ;
 // printStmt -> "print" expression ";" ;
+// block -> "{" + declaration* + "}" ;
 //
 // expression -> assignement ;
 // assignment -> IDENTIFIER "=" assignement | equality ;
