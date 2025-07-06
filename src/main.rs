@@ -1,3 +1,4 @@
+use rox::Declaration;
 use rox::Env;
 use rox::Parser;
 use rox::Scanner;
@@ -21,11 +22,6 @@ fn main() -> Result<(), std::io::Error> {
 
 fn run(source: &str) -> Vec<Token> {
     let scanner = Scanner::scan_tokens(source);
-
-    // for tok in scanner.tokens {
-    //     println!("{tok}");
-    // }
-
     scanner.tokens
 }
 
@@ -33,10 +29,14 @@ fn run_file(filename: &str) -> Result<(), std::io::Error> {
     let raw_file_content = fs::read_to_string(filename)?;
 
     let tokens = run(&raw_file_content);
-
     println!("Tokens:\n{tokens:?}\n");
 
-    parse(tokens);
+    let declarations = parse(tokens);
+    for decl in &declarations {
+        println!("{decl:?}");
+    }
+
+    evaluate(declarations);
 
     Ok(())
 }
@@ -52,20 +52,13 @@ fn run_prompt() -> Result<(), std::io::Error> {
     }
 }
 
-fn parse(tokens: Vec<Token>) {
-    let declarations =
-        Parser::parse(tokens).expect("tokens should map correctly to a list of statements");
+fn parse(tokens: Vec<Token>) -> Vec<Declaration> {
+    Parser::parse(tokens).expect("tokens should map correctly to a list of statements")
+}
 
-    println!("Declarations:");
-    for decl in &declarations {
-        println!("{decl:?}");
-    }
-
-    let mut env = Env::new();
-
+fn evaluate(declarations: Vec<Declaration>) {
+    let mut env = Env::default();
     for decl in declarations {
         let _val = decl.evaluate(&mut env);
     }
-
-    println!("\nEnvironement:\n{env:?}");
 }

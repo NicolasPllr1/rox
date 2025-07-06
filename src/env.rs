@@ -33,13 +33,11 @@ impl Env {
     pub fn assign(&mut self, name: &Token, value: LoxValue) {
         if self.values.contains_key(&name.lexeme) {
             self.values.insert(name.lexeme.to_owned(), value);
+        } else if let Some(parent_env) = &mut self.enclosing {
+            parent_env.assign(name, value);
         } else {
-            if let Some(parent_env) = &mut self.enclosing {
-                parent_env.assign(name, value);
-            } else {
-                let var_name = &name.lexeme;
-                panic!("Undefined variable {var_name}")
-            }
+            let var_name = &name.lexeme;
+            panic!("Undefined variable {var_name}")
         }
     }
 
@@ -60,5 +58,11 @@ impl Env {
                 }
             }
         }
+    }
+}
+
+impl Default for Env {
+    fn default() -> Self {
+        Self::new()
     }
 }
