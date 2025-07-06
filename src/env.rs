@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use crate::{expr::LoxValue, Token};
+use crate::ast::LoxValue;
+use crate::token::Token;
 
 #[derive(Debug, Clone)]
 pub struct Env {

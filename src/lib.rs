@@ -1,8 +1,12 @@
+mod ast;
 mod env;
-mod expr;
+mod interpreter;
+mod parser;
 mod scanner;
 mod token;
+pub use ast::{BinaryOp, Declaration, Expr, LoxValue, UnaryOp};
 pub use env::Env;
-pub use expr::{Declaration, Expr, Parser};
+pub use interpreter::{EvaluationError, Interpreter};
+pub use parser::{Parser, ParserError};
 pub use scanner::Scanner;
 pub use token::Token;
