@@ -130,6 +130,10 @@ impl Parser {
                     }),
                 }
             }
+            Some(&tok) if tok.token_type == TokenType::If => {
+                tokens.next(); // consume "if"
+                Parser::if_stmt(tokens)
+            }
             Some(_) => {
                 let expr_stmt = Parser::expr_stmt(tokens)?;
                 match Parser::check_next_token_type(tokens, TokenType::Semicolon) {
@@ -185,6 +189,46 @@ impl Parser {
                 tok: Some(tok.clone()),
             }),
             _ => panic!("print statement expect semicolon at the end, got no token at all"),
+        }
+    }
+
+    fn if_stmt(tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
+        // "if" was already consumed
+        match tokens.peek() {
+            Some(tok) if tok.token_type == TokenType::LeftParen => {
+                tokens.next(); // consume "("
+                let condition = Parser::expression(tokens)?;
+                match tokens.peek() {
+                    Some(tok) if tok.token_type == TokenType::RightParen => {
+                        tokens.next(); // consume ")"
+                        let then_branch = Box::new(Parser::statement(tokens)?);
+                        let else_branch = match tokens.peek() {
+                            Some(tok) if tok.token_type == TokenType::Else => {
+                                Some(Box::new(Parser::statement(tokens)?))
+                            }
+                            _ => None,
+                        };
+                        Ok(Stmt::IfStmt {
+                            condition,
+                            then_branch,
+                            else_branch,
+                        })
+                    }
+                    _ => Err(ParserError {
+                        msg: "condition in if statement must be followed by a right parenthesis"
+                            .to_owned(),
+                        tok: None,
+                    }),
+                }
+            }
+            Some(&tok) => Err(ParserError {
+                msg: "Expects left parenthesis after 'if' keyword".to_owned(),
+                tok: Some(tok.clone()),
+            }),
+            None => Err(ParserError {
+                msg: "Expects left parenthesis after 'if' keyword, got none".to_owned(),
+                tok: None,
+            }),
         }
     }
 

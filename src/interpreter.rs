@@ -62,6 +62,21 @@ impl Interpreter {
                 self.env = original_env.clone(); // restaure interpreter original env
                 LoxValue::Nil
             }
+            Stmt::IfStmt {
+                condition,
+                then_branch,
+                else_branch,
+            } => match self.evaluate_expr(condition) {
+                LoxValue::Bool(true) => self.evaluate_stmt(&then_branch),
+                LoxValue::Bool(false) => {
+                    if let Some(stmt) = else_branch {
+                        self.evaluate_stmt(stmt)
+                    } else {
+                        LoxValue::Nil
+                    }
+                }
+                _ => panic!("expect expression to evaluate to a boolean in if statement"),
+            },
         }
     }
 

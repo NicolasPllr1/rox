@@ -7,9 +7,10 @@ use crate::token::{Token, TokenType};
 // declaration -> varDecl | statement;
 //
 // varDecl -> "var" + IDENTIFIER ( "=" expression )? ";" ;
-// statement -> exprStmt | printstmt | block ;
+// statement -> exprStmt | IfStmt | printstmt | block ;
 //
 // exprStmt -> expression ";" ;
+// IfStmt -> "if" + "(" + expression + ")" statement ( "else" statement )? ;
 // printStmt -> "print" expression ";" ;
 // block -> "{" + declaration* + "}" ;
 //
@@ -99,6 +100,11 @@ impl From<TokenType> for UnaryOp {
 #[derive(Debug)]
 pub enum Stmt {
     ExprStmt(Expr),
+    IfStmt {
+        condition: Expr,
+        then_branch: Box<Stmt>,
+        else_branch: Option<Box<Stmt>>,
+    },
     PrintStmt(Expr),
     Block(Vec<Declaration>),
 }
