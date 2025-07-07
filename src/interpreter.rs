@@ -1,4 +1,4 @@
-use crate::ast::{BinaryOp, Declaration, Expr, LoxValue, Stmt, UnaryOp};
+use crate::ast::{BinaryOp, Declaration, Expr, LogicOp, LoxValue, Stmt, UnaryOp};
 use crate::env::Env;
 
 pub struct Interpreter {
@@ -146,19 +146,6 @@ impl Interpreter {
                         ),
                     }
                 }
-                BinaryOp::And => match (self.evaluate_expr(left), self.evaluate_expr(right)) {
-                    (LoxValue::Bool(b_left), LoxValue::Bool(b_right)) => {
-                        LoxValue::Bool(b_left && b_right)
-                    }
-                    _ => panic!("And binary operator 'and' expect two booleans as operands"),
-                },
-
-                BinaryOp::Or => match (self.evaluate_expr(left), self.evaluate_expr(right)) {
-                    (LoxValue::Bool(b_left), LoxValue::Bool(b_right)) => {
-                        LoxValue::Bool(b_left || b_right)
-                    }
-                    _ => panic!("And binary operator 'and' expect two booleans as operands"),
-                },
             },
             Expr::Grouping(expr) => self.evaluate_expr(expr),
             Expr::Variable { name } => self.env.get(&name.lexeme).clone(),
@@ -167,6 +154,30 @@ impl Interpreter {
                 self.env.assign(name, final_value.clone());
                 final_value
             }
+
+            Expr::Logical { left, op, right } => match op {
+                // short-circuiting logical operators
+                LogicOp::Or => match self.evaluate_expr(left) {
+                    LoxValue::Bool(true) => LoxValue::Bool(true),
+                    LoxValue::Bool(false) => self.evaluate_expr(right),
+                    _ => panic!(
+                        "Or binary operator 'or' expect first operands to be a Lox boolean value"
+                    ),
+                },
+                LogicOp::And => match self.evaluate_expr(left) {
+                    LoxValue::Bool(true) => {
+                        if let LoxValue::Bool(true) = self.evaluate_expr(right) {
+                            LoxValue::Bool(true)
+                        } else {
+                            LoxValue::Bool(false)
+                        }
+                    }
+                    LoxValue::Bool(false) => LoxValue::Bool(false),
+                    _ => panic!(
+                        "And binary operator 'and' expect first operands to be a Lox boolean value"
+                    ),
+                },
+            },
         }
     }
 }

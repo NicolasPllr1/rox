@@ -3,7 +3,7 @@
 use crate::token::{Token, TokenType};
 use std::{iter::Peekable, slice::Iter};
 
-use crate::ast::{BinaryOp, Declaration, Expr, LoxValue, Stmt, UnaryOp};
+use crate::ast::{BinaryOp, Declaration, Expr, LogicOp, LoxValue, Stmt, UnaryOp};
 
 #[derive(Debug)]
 pub struct ParserError {
@@ -91,15 +91,15 @@ impl Parser {
     ) -> Result<(), ParserError> {
         match tokens.peek() {
             Some(&after_tok) if after_tok.token_type == nxt_expected_type => {
-                tokens.next(); // consume the semicolon
+                tokens.next(); // consume the token
                 Ok(())
             }
-            Some(&not_semicolon) => Err(ParserError {
-                msg: "expects to end with a semicolon".to_owned(),
-                tok: Some(not_semicolon.clone()),
+            Some(&not_correct_tok) => Err(ParserError {
+                msg: "expects to end with {nxt_expected_type}".to_owned(),
+                tok: Some(not_correct_tok.clone()),
             }),
             None => Err(ParserError {
-                msg: "expects to end with a semicolon, but got none".to_owned(),
+                msg: "expects to end with {nxt_expected_type}, but got none".to_owned(),
                 tok: None,
             }),
         }
@@ -237,7 +237,7 @@ impl Parser {
     }
 
     fn assignment(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
-        let expr = Parser::equality(tokens)?;
+        let expr = Parser::logic_or(tokens)?;
 
         match tokens.peek() {
             Some(&tok_equal) if tok_equal.token_type == TokenType::Equal => {
@@ -257,6 +257,33 @@ impl Parser {
             }
             _ => Ok(expr),
         }
+    }
+
+    fn logic_or(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+        let mut expr = Parser::logic_and(tokens)?;
+
+        while Parser::check_next_token_type(tokens, TokenType::Or).is_ok() {
+            let right = Parser::logic_and(tokens)?;
+            expr = Expr::Logical {
+                left: Box::new(expr),
+                op: LogicOp::Or,
+                right: Box::new(right),
+            };
+        }
+        Ok(expr)
+    }
+    fn logic_and(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+        let mut expr = Parser::equality(tokens)?;
+
+        while Parser::check_next_token_type(tokens, TokenType::And).is_ok() {
+            let right = Parser::equality(tokens)?;
+            expr = Expr::Logical {
+                left: Box::new(expr),
+                op: LogicOp::And,
+                right: Box::new(right),
+            };
+        }
+        Ok(expr)
     }
 
     fn equality(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {

@@ -1,0 +1,25 @@
+var a = "global a";
+var b = "global b";
+var c = "global c";
+{
+  var a = "outer a";
+  var b = "outer b";
+  {
+    var a = "inner a";
+    print a;
+    print b;
+    print c;
+  }
+  print a;
+  print b;
+  print c;
+}
+print a;
+print b;
+print c;
+
+var bool_true = true;
+var bool_false = false;
+
+print bool_true or bool_false ;
+print bool_true and bool_false;

@@ -15,8 +15,10 @@ use crate::token::{Token, TokenType};
 // block -> "{" + declaration* + "}" ;
 //
 // expression -> assignement ;
-// assignment -> IDENTIFIER "=" assignement | equality ;
+// assignment -> IDENTIFIER "=" assignement | logic_or ;
 //
+// logic_or -> logic_and ( "or" logic_and )* ;
+// logic_and -> equality ( "and" equality )* ;
 // equality -> comparison ( ("!=" | "==" ) comparison )* ;
 // comparison -> term ( (">" | ">=" | "<" | "<=") term )* ;
 // term -> factor ( ("-" | "+" ) factor )* ;
@@ -53,13 +55,16 @@ pub enum Expr {
         name: Token,
         value: Box<Expr>,
     },
+    Logical {
+        left: Box<Expr>,
+        op: LogicOp,
+        right: Box<Expr>,
+    },
 }
 #[derive(Debug)]
 pub enum BinaryOp {
-    And,
     Plus,
     Minus,
-    Or,
     Slash,
     Star,
     EqualEqual,
@@ -69,10 +74,8 @@ pub enum BinaryOp {
 impl From<TokenType> for BinaryOp {
     fn from(tok_type: TokenType) -> BinaryOp {
         match tok_type {
-            TokenType::And => BinaryOp::And,
             TokenType::Plus => BinaryOp::Plus,
             TokenType::Minus => BinaryOp::Minus,
-            TokenType::Or => BinaryOp::Or,
             TokenType::Slash => BinaryOp::Slash,
             TokenType::Star => BinaryOp::Star,
             TokenType::EqualEqual => BinaryOp::EqualEqual,
@@ -93,6 +96,21 @@ impl From<TokenType> for UnaryOp {
             TokenType::Bang => UnaryOp::Bang,
             TokenType::Minus => UnaryOp::Minus,
             _ => panic!("Wrong token type for an unary operator: {tok_type}"),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum LogicOp {
+    Or,
+    And,
+}
+impl From<TokenType> for LogicOp {
+    fn from(tok_type: TokenType) -> LogicOp {
+        match tok_type {
+            TokenType::Or => LogicOp::Or,
+            TokenType::And => LogicOp::And,
+            _ => panic!("Wrong token type for logic operator: {tok_type}"),
         }
     }
 }
