@@ -7,11 +7,12 @@ use crate::token::{Token, TokenType};
 // declaration -> varDecl | statement;
 //
 // varDecl -> "var" + IDENTIFIER ( "=" expression )? ";" ;
-// statement -> exprStmt | IfStmt | printstmt | block ;
+// statement -> exprStmt | IfStmt | printstmt | whileStmt | block ;
 //
 // exprStmt -> expression ";" ;
 // IfStmt -> "if" + "(" + expression + ")" statement ( "else" statement )? ;
 // printStmt -> "print" expression ";" ;
+// whileStmt -> "while" "(" expression ")" statement ;
 // block -> "{" + declaration* + "}" ;
 //
 // expression -> assignement ;
@@ -122,6 +123,11 @@ pub enum Stmt {
         condition: Expr,
         then_branch: Box<Stmt>,
         else_branch: Option<Box<Stmt>>,
+    },
+
+    WhileStmt {
+        condition: Expr,
+        body: Box<Stmt>,
     },
     PrintStmt(Expr),
     Block(Vec<Declaration>),

@@ -134,6 +134,11 @@ impl Parser {
                 tokens.next(); // consume "if"
                 Parser::if_stmt(tokens)
             }
+            Some(&tok) if tok.token_type == TokenType::While => {
+                tokens.next(); // consume "while"
+                Parser::while_stmt(tokens)
+            }
+
             Some(_) => {
                 let expr_stmt = Parser::expr_stmt(tokens)?;
                 match Parser::check_next_token_type(tokens, TokenType::Semicolon) {
@@ -216,6 +221,36 @@ impl Parser {
                     }
                     _ => Err(ParserError {
                         msg: "condition in if statement must be followed by a right parenthesis"
+                            .to_owned(),
+                        tok: None,
+                    }),
+                }
+            }
+            Some(&tok) => Err(ParserError {
+                msg: "Expects left parenthesis after 'if' keyword".to_owned(),
+                tok: Some(tok.clone()),
+            }),
+            None => Err(ParserError {
+                msg: "Expects left parenthesis after 'if' keyword, got none".to_owned(),
+                tok: None,
+            }),
+        }
+    }
+
+    fn while_stmt(tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
+        // "if" was already consumed
+        match tokens.peek() {
+            Some(tok) if tok.token_type == TokenType::LeftParen => {
+                tokens.next(); // consume "("
+                let condition = Parser::expression(tokens)?;
+                match tokens.peek() {
+                    Some(tok) if tok.token_type == TokenType::RightParen => {
+                        tokens.next(); // consume ")"
+                        let body = Box::new(Parser::statement(tokens)?);
+                        Ok(Stmt::WhileStmt { condition, body })
+                    }
+                    _ => Err(ParserError {
+                        msg: "condition in while statement must be followed by a right parenthesis"
                             .to_owned(),
                         tok: None,
                     }),

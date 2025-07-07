@@ -77,6 +77,12 @@ impl Interpreter {
                 }
                 _ => panic!("expect expression to evaluate to a boolean in if statement"),
             },
+            Stmt::WhileStmt { condition, body } => {
+                while let LoxValue::Bool(true) = self.evaluate_expr(condition) {
+                    self.evaluate_stmt(body);
+                }
+                LoxValue::Nil
+            }
         }
     }
 
