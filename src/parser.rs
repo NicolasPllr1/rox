@@ -95,11 +95,11 @@ impl Parser {
                 Ok(())
             }
             Some(&not_correct_tok) => Err(ParserError {
-                msg: "expects to end with {nxt_expected_type}".to_owned(),
+                msg: format!("expects to end with {nxt_expected_type}"),
                 tok: Some(not_correct_tok.clone()),
             }),
             None => Err(ParserError {
-                msg: "expects to end with {nxt_expected_type}, but got none".to_owned(),
+                msg: format!("expects to end with {nxt_expected_type}, but got none"),
                 tok: None,
             }),
         }
@@ -138,16 +138,13 @@ impl Parser {
                 tokens.next(); // consume "while"
                 Parser::while_stmt(tokens)
             }
-
+            Some(&tok) if tok.token_type == TokenType::For => {
+                tokens.next(); // consume "for"
+                Parser::for_stmt(tokens)
+            }
             Some(_) => {
                 let expr_stmt = Parser::expr_stmt(tokens)?;
-                match Parser::check_next_token_type(tokens, TokenType::Semicolon) {
-                    Ok(()) => Ok(Stmt::ExprStmt(expr_stmt)),
-                    Err(e) => Err(ParserError {
-                        msg: "print statement expects to end with a semicolon".to_owned(),
-                        tok: e.tok,
-                    }),
-                }
+                Ok(Stmt::ExprStmt(expr_stmt))
             }
             None => panic!("Statement expects a token"),
         }
@@ -265,6 +262,64 @@ impl Parser {
                 tok: None,
             }),
         }
+    }
+
+    fn for_stmt(tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
+        Parser::check_next_token_type(tokens, TokenType::LeftParen)?;
+
+        // parse initializer
+        let initializer = match tokens.peek() {
+            Some(&tok) if tok.token_type == TokenType::Semicolon => None,
+            Some(&tok) if tok.token_type == TokenType::Var => {
+                tokens.next(); // consume 'var'
+                Some(Parser::var_decl(tokens)?)
+            }
+            _ => Some(Declaration::StmtDecl(Stmt::ExprStmt(Parser::expression(
+                tokens,
+            )?))),
+        };
+
+        let condition = match Parser::check_next_token_type(tokens, TokenType::Semicolon) {
+            Ok(_) => Expr::Literal(LoxValue::Bool(true)),
+            _ => {
+                let expr = Parser::expression(tokens)?;
+                Parser::check_next_token_type(tokens, TokenType::Semicolon)?;
+                expr
+            }
+        };
+
+        let increment = match Parser::check_next_token_type(tokens, TokenType::RightParen) {
+            Ok(_) => None,
+            _ => {
+                let expr = Parser::expression(tokens)?;
+                Parser::check_next_token_type(tokens, TokenType::RightParen)?;
+                Some(expr)
+            }
+        };
+
+        let mut body = Parser::statement(tokens)?;
+
+        // desugaring the for loop
+        if increment.is_some() {
+            body = Stmt::Block(
+                [
+                    Declaration::StmtDecl(body),
+                    Declaration::StmtDecl(Stmt::ExprStmt(increment.unwrap())),
+                ]
+                .into(),
+            );
+        };
+
+        body = Stmt::WhileStmt {
+            condition,
+            body: Box::new(body),
+        };
+
+        if initializer.is_some() {
+            body = Stmt::Block([initializer.unwrap(), Declaration::StmtDecl(body)].into());
+        };
+
+        Ok(body)
     }
 
     fn expression(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {

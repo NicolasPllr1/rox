@@ -10,6 +10,7 @@ use crate::token::{Token, TokenType};
 // statement -> exprStmt | IfStmt | printstmt | whileStmt | block ;
 //
 // exprStmt -> expression ";" ;
+// forStmt -> "for" "(" ( varDecl | exprStmt | "," ) expression? ";" expression? ")" statement ;
 // IfStmt -> "if" + "(" + expression + ")" statement ( "else" statement )? ;
 // printStmt -> "print" expression ";" ;
 // whileStmt -> "while" "(" expression ")" statement ;
@@ -70,6 +71,10 @@ pub enum BinaryOp {
     Star,
     EqualEqual,
     BangEqual,
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual,
 }
 
 impl From<TokenType> for BinaryOp {
@@ -81,6 +86,10 @@ impl From<TokenType> for BinaryOp {
             TokenType::Star => BinaryOp::Star,
             TokenType::EqualEqual => BinaryOp::EqualEqual,
             TokenType::BangEqual => BinaryOp::BangEqual,
+            TokenType::Greater => BinaryOp::Greater,
+            TokenType::GreaterEqual => BinaryOp::GreaterEqual,
+            TokenType::Less => BinaryOp::Less,
+            TokenType::LessEqual => BinaryOp::LessEqual,
             _ => panic!("Wrong token type for a binary operator: {tok_type}"),
         }
     }

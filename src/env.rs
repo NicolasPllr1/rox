@@ -53,6 +53,7 @@ impl Env {
 
                 // NOTE: the importance of borrowing:
                 if let Some(parent_env) = &self.enclosing {
+                    println!("parent env: {parent_env:?}");
                     parent_env.get(name)
                 } else {
                     panic!("Undefined variable {name}")

@@ -112,7 +112,9 @@ impl Interpreter {
                     (LoxValue::Number(n_left), LoxValue::Number(n_right)) => {
                         LoxValue::Number(n_left + n_right)
                     }
-                    _ => panic!("Plus binary operator '+' expect two numbers as operands"),
+                    (a, b) => panic!(
+                        "Plus binary operator '+' expect two numbers as operands, got: {a:?}, {b:?}"
+                    ),
                 },
                 BinaryOp::Minus => match (self.evaluate_expr(left), self.evaluate_expr(right)) {
                     (LoxValue::Number(n_left), LoxValue::Number(n_right)) => {
@@ -152,12 +154,62 @@ impl Interpreter {
                         ),
                     }
                 }
+
+                BinaryOp::Greater => match (self.evaluate_expr(left), self.evaluate_expr(right)) {
+                    (LoxValue::Number(b_left), LoxValue::Number(b_right)) => {
+                        LoxValue::Bool(b_left > b_right)
+                    }
+                    _ => panic!("Greater binary operator '>' expect two numbers as operands"),
+                },
+
+                BinaryOp::GreaterEqual => {
+                    match (self.evaluate_expr(left), self.evaluate_expr(right)) {
+                        (LoxValue::Number(b_left), LoxValue::Number(b_right)) => {
+                            LoxValue::Bool(b_left >= b_right)
+                        }
+                        _ => panic!(
+                            "Greater or equal binary operator '>=' expect two numbers as operands"
+                        ),
+                    }
+                }
+                BinaryOp::Less => match (self.evaluate_expr(left), self.evaluate_expr(right)) {
+                    (LoxValue::Number(b_left), LoxValue::Number(b_right)) => {
+                        LoxValue::Bool(b_left < b_right)
+                    }
+                    _ => panic!("Lesser binary operator '<' expect two numbers as operands"),
+                },
+
+                BinaryOp::LessEqual => {
+                    match (self.evaluate_expr(left), self.evaluate_expr(right)) {
+                        (LoxValue::Number(b_left), LoxValue::Number(b_right)) => {
+                            LoxValue::Bool(b_left <= b_right)
+                        }
+                        _ => panic!(
+                            "Lesser or equal binary operator '<=' expect two numbers as operands"
+                        ),
+                    }
+                }
             },
             Expr::Grouping(expr) => self.evaluate_expr(expr),
-            Expr::Variable { name } => self.env.get(&name.lexeme).clone(),
+            Expr::Variable { name } => {
+                let val = self.env.get(&name.lexeme).clone();
+                println!("Get {name:?} from env: {val:?}");
+                val
+            }
             Expr::Assign { name, value } => {
                 let final_value = self.evaluate_expr(value);
+                dbg!(name);
+                dbg!(&final_value);
+                dbg!(&self.env);
+
+                let before_env = &self.env;
+                println!("env before assign: {before_env:?}");
+
                 self.env.assign(name, final_value.clone());
+
+                let after_env = &self.env;
+                println!("env after assign: {after_env:?}");
+
                 final_value
             }
 
