@@ -68,3 +68,29 @@ impl Default for Env {
         Self::new()
     }
 }
+
+#[cfg(test)]
+
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn test_nested_env() {
+        let mut env1 = Env::new();
+
+        let var1 = LoxValue::Number(1.0);
+        let var2 = LoxValue::Number(2.0);
+        let var3 = LoxValue::Number(3.0);
+
+        env1.define("var1", var1);
+
+        let mut env2 = Env::new_from(&env1);
+        env2.define("var2", var2);
+        env2.define("var3", var3);
+
+        dbg!(&env1);
+        dbg!(&env2);
+        assert!(*env1.get("var3") == LoxValue::Number(3.0))
+    }
+}
