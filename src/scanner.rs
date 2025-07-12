@@ -266,7 +266,14 @@ mod tests {
                 literal: None,
                 line: 1,
             },
+            Token {
+                token_type: TokenType::Eof,
+                lexeme: "".to_string(),
+                literal: None,
+                line: 1,
+            },
         ];
+
         assert!(toks == gt);
     }
 
@@ -278,7 +285,12 @@ mod tests {
 
         let toks = scanner.tokens;
 
-        let gt = vec![]; // comments are ignored by the parser (~skipped)
+        let gt = vec![Token {
+            token_type: TokenType::Eof,
+            lexeme: "".to_string(),
+            literal: None,
+            line: 3,
+        }]; // comments are ignored by the parser (~skipped) but counts line-wise
 
         assert!(toks == gt);
     }
@@ -291,12 +303,20 @@ mod tests {
 
         let toks = scanner.tokens;
 
-        let gt = vec![Token {
-            token_type: TokenType::Number,
-            lexeme: "123.456".to_string(),
-            literal: Some("123.456".to_string()),
-            line: 1,
-        }]; // comments are ignored by the parser (~skipped)
+        let gt = vec![
+            Token {
+                token_type: TokenType::Number,
+                lexeme: "123.456".to_string(),
+                literal: Some("123.456".to_string()),
+                line: 1,
+            },
+            Token {
+                token_type: TokenType::Eof,
+                lexeme: "".to_string(),
+                literal: None,
+                line: 2,
+            },
+        ]; // comments are ignored by the parser (~skipped)
 
         assert!(toks == gt);
     }
@@ -327,6 +347,12 @@ mod tests {
                 literal: Some("789.0".to_string()),
                 line: 1,
             },
+            Token {
+                token_type: TokenType::Eof,
+                lexeme: "".to_string(),
+                literal: None,
+                line: 1,
+            },
         ];
 
         assert!(toks == gt);
@@ -353,6 +379,12 @@ mod tests {
                 literal: Some("456.0".to_string()),
                 line: 1,
             },
+            Token {
+                token_type: TokenType::Eof,
+                lexeme: "".to_string(),
+                literal: None,
+                line: 1,
+            },
         ];
 
         assert!(toks == gt);
@@ -366,12 +398,20 @@ mod tests {
 
         let toks = scanner.tokens;
 
-        let gt = vec![Token {
-            token_type: TokenType::BangEqual,
-            lexeme: "!=".to_string(),
-            literal: None,
-            line: 1,
-        }];
+        let gt = vec![
+            Token {
+                token_type: TokenType::BangEqual,
+                lexeme: "!=".to_string(),
+                literal: None,
+                line: 1,
+            },
+            Token {
+                token_type: TokenType::Eof,
+                lexeme: "".to_string(),
+                literal: None,
+                line: 1,
+            },
+        ];
 
         assert!(toks == gt);
     }
@@ -393,13 +433,19 @@ mod tests {
             },
             Token {
                 token_type: TokenType::String,
-                lexeme: "hello".to_string(),
-                literal: Some("\"hello\"".into()),
+                lexeme: "\"hello\"".to_string(),
+                literal: Some("hello".into()),
                 line: 1,
             },
             Token {
                 token_type: TokenType::RightParen,
                 lexeme: ")".to_string(),
+                literal: None,
+                line: 1,
+            },
+            Token {
+                token_type: TokenType::Eof,
+                lexeme: "".to_string(),
                 literal: None,
                 line: 1,
             },
@@ -416,12 +462,20 @@ mod tests {
 
         let toks = scanner.tokens;
 
-        let gt = vec![Token {
-            token_type: TokenType::String,
-            lexeme: "lorem\nipsum".to_string(),
-            literal: Some("\"lorem\nipsum\"".to_string()),
-            line: 2,
-        }];
+        let gt = vec![
+            Token {
+                token_type: TokenType::String,
+                lexeme: "\"lorem\nipsum\"".to_string(),
+                literal: Some("lorem\nipsum".to_string()),
+                line: 2,
+            },
+            Token {
+                token_type: TokenType::Eof,
+                lexeme: "".to_string(),
+                literal: None,
+                line: 2,
+            },
+        ];
 
         assert!(toks == gt);
     }
@@ -434,12 +488,20 @@ mod tests {
 
         let toks = scanner.tokens;
 
-        let gt = vec![Token {
-            token_type: TokenType::Number,
-            lexeme: "123.456".to_string(),
-            literal: Some("123.456".into()),
-            line: 1,
-        }];
+        let gt = vec![
+            Token {
+                token_type: TokenType::Number,
+                lexeme: "123.456".to_string(),
+                literal: Some("123.456".into()),
+                line: 1,
+            },
+            Token {
+                token_type: TokenType::Eof,
+                lexeme: "".to_string(),
+                literal: None,
+                line: 1,
+            },
+        ];
 
         assert!(toks == gt);
     }
@@ -486,6 +548,12 @@ mod tests {
             Token {
                 token_type: TokenType::Identifier,
                 lexeme: "felse".to_string(),
+                literal: None,
+                line: 1,
+            },
+            Token {
+                token_type: TokenType::Eof,
+                lexeme: "".to_string(),
                 literal: None,
                 line: 1,
             },
