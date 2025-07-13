@@ -1,8 +1,11 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use crate::ast::{BinaryOp, Declaration, Expr, LogicOp, LoxValue, Stmt, UnaryOp};
 use crate::env::Env;
 
 pub struct Interpreter {
-    env: Env,
+    env: Rc<RefCell<Env>>,
 }
 
 impl Default for Interpreter {
@@ -14,7 +17,7 @@ impl Default for Interpreter {
 impl Interpreter {
     fn new() -> Interpreter {
         Interpreter {
-            env: Env::default(),
+            env: Rc::new(RefCell::new(Env::default())),
         }
     }
 
@@ -30,7 +33,7 @@ impl Interpreter {
                 let value = initializer
                     .as_ref() // NOTE: study this as_ref, related to options and shared references ?
                     .map_or(LoxValue::Nil, |expr| self.evaluate_expr(expr));
-                self.env.define(&name.lexeme, value);
+                self.env.borrow_mut().define(&name.lexeme, value); // NOTE: borrow_mut vs get_mut
                 LoxValue::Nil
             }
         }
@@ -50,16 +53,16 @@ impl Interpreter {
 
             Stmt::Block(declarations) => {
                 // create new env and evaluate all inner statements in it
-                let original_env = self.env.clone();
+                let original_env = Rc::clone(&self.env);
                 let block_env = Env::new_from(&self.env);
 
                 // intepret declarations in the block with the new nested env
-                self.env = block_env;
+                self.env = Rc::new(RefCell::new(block_env));
                 for decl in declarations {
                     self.evaluate_decl(decl);
                 }
 
-                self.env = original_env.clone(); // restaure interpreter original env
+                self.env = original_env; // restaure interpreter original env
                 LoxValue::Nil
             }
             Stmt::IfStmt {
@@ -191,25 +194,10 @@ impl Interpreter {
                 }
             },
             Expr::Grouping(expr) => self.evaluate_expr(expr),
-            Expr::Variable { name } => {
-                let val = self.env.get(&name.lexeme).clone();
-                println!("Get {name:?} from env: {val:?}");
-                val
-            }
+            Expr::Variable { name } => self.env.borrow().get(&name.lexeme).clone(),
             Expr::Assign { name, value } => {
                 let final_value = self.evaluate_expr(value);
-                dbg!(name);
-                dbg!(&final_value);
-                dbg!(&self.env);
-
-                let before_env = &self.env;
-                println!("env before assign: {before_env:?}");
-
-                self.env.assign(name, final_value.clone());
-
-                let after_env = &self.env;
-                println!("env after assign: {after_env:?}");
-
+                self.env.borrow_mut().assign(name, final_value.clone());
                 final_value
             }
 

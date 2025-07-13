@@ -1,11 +1,13 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use crate::ast::LoxValue;
 use crate::token::Token;
 
 #[derive(Debug, Clone)]
 pub struct Env {
-    enclosing: Option<Box<Env>>, // parent environement. To implement scope.
+    enclosing: Option<Rc<RefCell<Env>>>, // parent environement. To implement scope.
     values: HashMap<String, LoxValue>,
 }
 
@@ -17,15 +19,14 @@ impl Env {
         }
     }
 
-    pub fn new_from(enclosing: &Env) -> Env {
-        Env {
-            enclosing: Some(Box::new(enclosing.clone())),
-            values: HashMap::new(),
-        }
+    pub fn new_from(enclosing: &Rc<RefCell<Env>>) -> Env {
+        let mut env = Env::default();
+        env.set_enclosing_env(enclosing);
+        env
     }
 
-    pub fn set_enclosing_env(&mut self, enclosing: Env) {
-        self.enclosing = Some(Box::new(enclosing));
+    pub fn set_enclosing_env(&mut self, enclosing: &Rc<RefCell<Env>>) {
+        self.enclosing = Some(Rc::clone(&enclosing));
     }
     pub fn define(&mut self, name: &str, value: LoxValue) {
         self.values.insert(name.to_owned(), value);
@@ -34,7 +35,8 @@ impl Env {
     pub fn assign(&mut self, name: &Token, value: LoxValue) {
         if self.values.contains_key(&name.lexeme) {
             self.values.insert(name.lexeme.to_owned(), value);
-        } else if let Some(parent_env) = &mut self.enclosing {
+        } else if let Some(parent_env_cell) = &self.enclosing {
+            let mut parent_env = parent_env_cell.borrow_mut();
             parent_env.assign(name, value);
         } else {
             let var_name = &name.lexeme;
@@ -42,19 +44,16 @@ impl Env {
         }
     }
 
-    pub fn get(&self, name: &str) -> &LoxValue {
-        match self.values.get(name) {
-            Some(val) => val,
-            None => {
-                // NOTE: the importance of as_ref():
-                // self.enclosing.as_ref().map(|env| env.get(name)).expect(
-                //     "Varibale with name {name} not found in environement nor enclosing envs",
-                // )
+    pub fn get(&self, name: &str) -> LoxValue {
+        // TODO: try to avoid cloning, introduced along with &parent_env_rc.borrow()
 
+        match self.values.get(name) {
+            Some(val) => val.clone(),
+            None => {
                 // NOTE: the importance of borrowing:
-                if let Some(parent_env) = &self.enclosing {
-                    println!("parent env: {parent_env:?}");
-                    parent_env.get(name)
+                if let Some(parent_env_rc) = &self.enclosing {
+                    let parent_env: &Env = &parent_env_rc.borrow(); // NOTE: no need to borrow ?
+                    parent_env.get(name).clone()
                 } else {
                     panic!("Undefined variable {name}")
                 }
@@ -77,20 +76,21 @@ mod tests {
 
     #[test]
     fn test_nested_env() {
-        let mut env1 = Env::new();
+        let env1 = Rc::new(RefCell::new(Env::default()));
 
         let var1 = LoxValue::Number(1.0);
         let var2 = LoxValue::Number(2.0);
-        let var3 = LoxValue::Number(3.0);
 
-        env1.define("var1", var1);
+        env1.borrow_mut().define("var1", var1.clone());
 
-        let mut env2 = Env::new_from(&env1);
-        env2.define("var2", var2);
-        env2.define("var3", var3);
+        let mut env2 = Env::new_from(&Rc::clone(&env1));
+        env2.define("var2", var2.clone());
 
         dbg!(&env1);
         dbg!(&env2);
-        assert!(*env1.get("var3") == LoxValue::Number(3.0))
+        assert!(env1.borrow().get("var1") == var1.clone());
+
+        assert!(env2.get("var1") == var1.clone()); // has to lool up enclosing (parent) env
+        assert!(env2.get("var2") == var2.clone());
     }
 }

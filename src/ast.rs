@@ -29,7 +29,7 @@ use crate::token::{Token, TokenType};
 //
 // primary -> NUMBER | STRING | "true" | "false" | "Nil" | "(" expression ")" | IDENTIFIER ;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum LoxValue {
     Bool(bool),
     Nil,
