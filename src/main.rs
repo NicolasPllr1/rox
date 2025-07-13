@@ -21,15 +21,18 @@ fn main() -> Result<(), InterpreterError> {
 }
 
 fn run(source: &str) -> Result<(), InterpreterError> {
+    println!("Scanning/Lexing:");
     let scanner = Scanner::scan_tokens(source);
     let tokens = scanner.tokens;
-    println!("Tokens:\n{tokens:?}\n");
+    println!("{tokens:?}");
 
+    println!("\nParsing:");
     let declarations = Parser::parse(tokens)?;
     for decl in &declarations {
         println!("{decl:?}");
     }
 
+    println!("\nEvaluation:");
     let mut interpreter = Interpreter::default();
     interpreter.evaluate(declarations);
     Ok(())
