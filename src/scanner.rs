@@ -138,6 +138,8 @@ impl Scanner {
                             && *nxt_l != '/'
                             && !nxt_l.is_ascii_control()
                             && *nxt_l != ';'
+                            && *nxt_l != ')'
+                            && *nxt_l != '('
                         {
                             chars.next();
                             current_idx += 1;
