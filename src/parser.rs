@@ -498,7 +498,6 @@ impl Parser {
                 _ => (),
             }
 
-            println!("After args parsing, tokens before checking for ')':\n{tokens:?}");
             match Parser::check_next_token_type(tokens, TokenType::RightParen) {
                 Ok(_) => {
                     expr = Expr::Call {
@@ -536,9 +535,7 @@ impl Parser {
                 TokenType::Nil => Ok(Expr::Literal(LoxValue::Nil)),
                 TokenType::LeftParen => {
                     tokens.next();
-                    println!("Going to parse after the first parenth of group ...");
                     let expr = Parser::expression(tokens)?;
-                    println!("After expr parsed within group");
                     match tokens.peek() {
                         Some(&tok) if tok.token_type == TokenType::RightParen => (),
                         // Some(&tok) if tok.token_type == TokenType::RightParen => tokens.next(), // consume right parenthesis
