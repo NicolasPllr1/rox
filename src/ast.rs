@@ -25,7 +25,10 @@ use crate::token::{Token, TokenType};
 // comparison -> term ( (">" | ">=" | "<" | "<=") term )* ;
 // term -> factor ( ("-" | "+" ) factor )* ;
 // factor -> unary ( ("/" | "*" ) unary )* ;
-// unary -> ("!" | "-") unary | primary ;
+// unary -> ("!" | "-") unary | call ;
+//
+// call -> primary ( "(" arguments? ")" )* ;
+// arguments -> expression ( "," expression )* ;
 //
 // primary -> NUMBER | STRING | "true" | "false" | "Nil" | "(" expression ")" | IDENTIFIER ;
 
@@ -37,7 +40,7 @@ pub enum LoxValue {
     String(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Expr {
     Literal(LoxValue),
     Unary {
@@ -62,8 +65,12 @@ pub enum Expr {
         op: LogicOp,
         right: Box<Expr>,
     },
+    Call {
+        callee: Box<Expr>,
+        arguments: Box<Vec<Expr>>, // NOTE: box of vec of vec of boxes ?
+    },
 }
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum BinaryOp {
     Plus,
     Minus,
@@ -95,7 +102,7 @@ impl From<TokenType> for BinaryOp {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum UnaryOp {
     Bang,
     Minus,
@@ -110,7 +117,7 @@ impl From<TokenType> for UnaryOp {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum LogicOp {
     Or,
     And,
@@ -125,7 +132,7 @@ impl From<TokenType> for LogicOp {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Stmt {
     ExprStmt(Expr),
     IfStmt {
@@ -142,7 +149,7 @@ pub enum Stmt {
     Block(Vec<Declaration>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Declaration {
     StmtDecl(Stmt),
     VarDecl {

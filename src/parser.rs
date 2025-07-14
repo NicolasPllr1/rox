@@ -454,7 +454,6 @@ impl Parser {
             };
         }
 
-        tokens.next();
         Ok(expr)
     }
     fn unary(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
@@ -467,11 +466,60 @@ impl Parser {
                 let right = Box::new(Parser::unary(tokens)?);
                 Ok(Expr::Unary { op, right })
             }
-            _ => Parser::primary(tokens),
+            _ => Parser::call(tokens),
         }
+    }
+    fn call(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+        let mut expr = Parser::primary(tokens)?;
+
+        while Parser::check_next_token_type(tokens, TokenType::LeftParen).is_ok() {
+            // left parenthesis just got consumed in the check
+            let mut args = Vec::new();
+
+            // Parse arguments
+            match tokens.peek() {
+                Some(tok) if tok.token_type != TokenType::RightParen => {
+                    // first arg
+                    args.push(Parser::expression(tokens)?);
+
+                    // follow-up args
+                    while Parser::check_next_token_type(tokens, TokenType::Comma).is_ok() {
+                        if args.len() < 255 {
+                            println!("Calling EXPRESSION to parse one FOLLOW-UP arguments");
+                            args.push(Parser::expression(tokens)?);
+                        } else {
+                            return Err(ParserError {
+                                msg: "Can't have more than 255 arguments".to_owned(),
+                                tok: tokens.next().cloned(), // NOTE: the use of cloned()
+                            });
+                        }
+                    }
+                }
+                _ => (),
+            }
+
+            println!("After args parsing, tokens before checking for ')':\n{tokens:?}");
+            match Parser::check_next_token_type(tokens, TokenType::RightParen) {
+                Ok(_) => {
+                    expr = Expr::Call {
+                        callee: Box::new(expr),
+                        arguments: Box::new(args),
+                    }
+                }
+                Err(_) => {
+                    return Err(ParserError {
+                        msg: "function call expects ')' after arguments".to_owned(),
+                        tok: None,
+                    })
+                }
+            }
+        }
+
+        Ok(expr)
     }
     fn primary(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
         if let Some(&tok) = tokens.peek() {
+            tokens.next(); // consume the token
             match tok.token_type {
                 TokenType::Number => Ok(Expr::Literal(LoxValue::Number(
                     tok.literal
@@ -531,5 +579,68 @@ impl Parser {
                 _ => todo!(),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fn_parsing() {
+        let tokens = Vec::from([
+            Token {
+                token_type: TokenType::Identifier,
+                lexeme: "hello_world".to_string(),
+                literal: None,
+                line: 1,
+            },
+            Token {
+                token_type: TokenType::LeftParen,
+                lexeme: "(".to_string(),
+                literal: None,
+                line: 1,
+            },
+            Token {
+                token_type: TokenType::Number,
+                lexeme: "1.0".to_string(),
+                literal: Some("1.0".to_owned()),
+                line: 1,
+            },
+            Token {
+                token_type: TokenType::RightParen,
+                lexeme: ")".to_string(),
+                literal: None,
+                line: 1,
+            },
+            Token {
+                token_type: TokenType::Semicolon,
+                lexeme: ";".to_string(),
+                literal: None,
+                line: 1,
+            },
+            Token {
+                token_type: TokenType::Eof,
+                lexeme: "".to_string(),
+                literal: None,
+                line: 1,
+            },
+        ]);
+
+        let ast = Parser::parse(tokens).expect("expects parsing not to fail");
+
+        let gt_fn_call_ast: Declaration = Declaration::StmtDecl(Stmt::ExprStmt(Expr::Call {
+            callee: Box::new(Expr::Variable {
+                name: Token {
+                    token_type: TokenType::Identifier,
+                    lexeme: "hello_world".to_string(),
+                    literal: None,
+                    line: 1,
+                },
+            }),
+            arguments: Box::new(Vec::from([Expr::Literal(LoxValue::Number(1.0))])),
+        }));
+
+        assert!(ast[0] == gt_fn_call_ast);
     }
 }

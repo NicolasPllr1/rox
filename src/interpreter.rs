@@ -224,6 +224,10 @@ impl Interpreter {
                     ),
                 },
             },
+            Expr::Call {
+                callee: _,
+                arguments: _,
+            } => todo!(),
         }
     }
 }
