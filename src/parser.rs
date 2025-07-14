@@ -85,23 +85,19 @@ impl Parser {
         }
     }
 
-    fn check_next_token_type(
+    // check if the next token matches the provided next token type.
+    // WILL CONSUME THE NEXT TOKEN.
+    // If the next token does not exist (.peek returns None) or does not match, returns None.
+    fn match_next_token_type(
         tokens: &mut Peekable<Iter<Token>>,
         nxt_expected_type: TokenType,
-    ) -> Result<(), ParserError> {
+    ) -> Option<Token> {
         match tokens.peek() {
-            Some(&after_tok) if after_tok.token_type == nxt_expected_type => {
+            Some(&next_tok) if next_tok.token_type == nxt_expected_type => {
                 tokens.next(); // consume the token
-                Ok(())
+                Some(next_tok.clone()) // NOTE: remove this clone ?
             }
-            Some(&not_correct_tok) => Err(ParserError {
-                msg: format!("expects to end with {nxt_expected_type}"),
-                tok: Some(not_correct_tok.clone()),
-            }),
-            None => Err(ParserError {
-                msg: format!("expects to end with {nxt_expected_type}, but got none"),
-                tok: None,
-            }),
+            _ => None,
         }
     }
 
@@ -110,11 +106,11 @@ impl Parser {
             Some(tok) if tok.token_type == TokenType::Print => {
                 tokens.next();
                 let print_stmt = Parser::print_stmt(tokens)?;
-                match Parser::check_next_token_type(tokens, TokenType::Semicolon) {
-                    Ok(()) => Ok(Stmt::PrintStmt(print_stmt)),
-                    Err(e) => Err(ParserError {
+                match Parser::match_next_token_type(tokens, TokenType::Semicolon) {
+                    Some(_) => Ok(Stmt::PrintStmt(print_stmt)),
+                    None => Err(ParserError {
                         msg: "print statement expects to end with a semicolon".to_owned(),
-                        tok: e.tok,
+                        tok: tokens.next().cloned(),
                     }),
                 }
             }
@@ -122,11 +118,11 @@ impl Parser {
                 tokens.next(); // consume left brace
                 let stmts_in_block = Parser::block(tokens)?;
 
-                match Parser::check_next_token_type(tokens, TokenType::RightBrace) {
-                    Ok(()) => Ok(Stmt::Block(stmts_in_block)),
-                    Err(e) => Err(ParserError {
+                match Parser::match_next_token_type(tokens, TokenType::RightBrace) {
+                    Some(_) => Ok(Stmt::Block(stmts_in_block)),
+                    None => Err(ParserError {
                         msg: "block statement expects to end with a right brace".to_owned(),
-                        tok: e.tok,
+                        tok: tokens.next().cloned(),
                     }),
                 }
             }
@@ -265,7 +261,12 @@ impl Parser {
     }
 
     fn for_stmt(tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
-        Parser::check_next_token_type(tokens, TokenType::LeftParen)?;
+        if Parser::match_next_token_type(tokens, TokenType::LeftParen).is_none() {
+            return Err(ParserError {
+                msg: "expects a '(' after the 'for' keyword".to_owned(),
+                tok: tokens.next().cloned(),
+            });
+        };
 
         // parse initializer
         let initializer = match tokens.peek() {
@@ -279,21 +280,44 @@ impl Parser {
             )?))),
         };
 
-        let condition = match Parser::check_next_token_type(tokens, TokenType::Semicolon) {
-            Ok(_) => Expr::Literal(LoxValue::Bool(true)),
+        let condition = match Parser::match_next_token_type(tokens, TokenType::Semicolon) {
+            Some(_) => Expr::Literal(LoxValue::Bool(true)),
             _ => {
                 let expr = Parser::expression(tokens)?;
-                Parser::check_next_token_type(tokens, TokenType::Semicolon)?;
-                expr
+                if Parser::match_next_token_type(tokens, TokenType::Semicolon).is_some() {
+                    expr
+                } else {
+                    return Err(ParserError {
+                        msg: "Expects semicolon after the for loop condition".to_owned(),
+                        tok: tokens.next().cloned(),
+                    });
+                }
             }
         };
 
-        let increment = match Parser::check_next_token_type(tokens, TokenType::RightParen) {
-            Ok(_) => None,
-            _ => {
+        let increment = match Parser::match_next_token_type(tokens, TokenType::RightParen) {
+            Some(_) => None,
+            None => {
                 let expr = Parser::expression(tokens)?;
-                Parser::check_next_token_type(tokens, TokenType::RightParen)?;
-                Some(expr)
+
+                // NOTE: if/else or combinator ?
+                Parser::match_next_token_type(tokens, TokenType::RightParen)
+                    .map(|_| Some(expr))
+                    .ok_or_else(|| ParserError {
+                        msg: "Expects right parenthesis at the end of the for loop initialization"
+                            .to_owned(),
+                        tok: tokens.next().cloned(),
+                    })?
+
+                // if Parser::match_next_token_type(tokens, TokenType::RightParen).is_some() {
+                //     Some(expr)
+                // } else {
+                //     return Err(ParserError {
+                //         msg: "Expects right parenthesis at the end of the for loop initialization"
+                //             .to_owned(),
+                //         tok: tokens.next().cloned(),
+                //     });
+                // }
             }
         };
 
@@ -352,7 +376,7 @@ impl Parser {
     fn logic_or(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
         let mut expr = Parser::logic_and(tokens)?;
 
-        while Parser::check_next_token_type(tokens, TokenType::Or).is_ok() {
+        while Parser::match_next_token_type(tokens, TokenType::Or).is_some() {
             let right = Parser::logic_and(tokens)?;
             expr = Expr::Logical {
                 left: Box::new(expr),
@@ -365,7 +389,7 @@ impl Parser {
     fn logic_and(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
         let mut expr = Parser::equality(tokens)?;
 
-        while Parser::check_next_token_type(tokens, TokenType::And).is_ok() {
+        while Parser::match_next_token_type(tokens, TokenType::And).is_some() {
             let right = Parser::equality(tokens)?;
             expr = Expr::Logical {
                 left: Box::new(expr),
@@ -472,7 +496,7 @@ impl Parser {
     fn call(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
         let mut expr = Parser::primary(tokens)?;
 
-        while Parser::check_next_token_type(tokens, TokenType::LeftParen).is_ok() {
+        while Parser::match_next_token_type(tokens, TokenType::LeftParen).is_some() {
             // left parenthesis just got consumed in the check
             let mut args = Vec::new();
 
@@ -483,9 +507,8 @@ impl Parser {
                     args.push(Parser::expression(tokens)?);
 
                     // follow-up args
-                    while Parser::check_next_token_type(tokens, TokenType::Comma).is_ok() {
+                    while Parser::match_next_token_type(tokens, TokenType::Comma).is_some() {
                         if args.len() < 255 {
-                            println!("Calling EXPRESSION to parse one FOLLOW-UP arguments");
                             args.push(Parser::expression(tokens)?);
                         } else {
                             return Err(ParserError {
@@ -498,17 +521,17 @@ impl Parser {
                 _ => (),
             }
 
-            match Parser::check_next_token_type(tokens, TokenType::RightParen) {
-                Ok(_) => {
+            match Parser::match_next_token_type(tokens, TokenType::RightParen) {
+                Some(_) => {
                     expr = Expr::Call {
                         callee: Box::new(expr),
                         arguments: Box::new(args),
                     }
                 }
-                Err(_) => {
+                None => {
                     return Err(ParserError {
                         msg: "function call expects ')' after arguments".to_owned(),
-                        tok: None,
+                        tok: tokens.next().cloned(),
                     })
                 }
             }
