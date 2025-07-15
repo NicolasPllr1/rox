@@ -1,6 +1,6 @@
 use std::{cell::RefCell, iter::zip, rc::Rc};
 
-use crate::{Env, Interpreter, LoxValue, Stmt, Token};
+use crate::{Env, EvaluationError, Interpreter, LoxValue, Stmt, Token};
 
 pub trait Callable {
     fn arity(&self) -> usize;
@@ -33,7 +33,11 @@ impl Callable for LoxCallable {
 
         // execute the block using the interpreter with the correct env
         interpreter.env = Rc::new(RefCell::new(fn_execution_env));
-        let final_value = interpreter.evaluate_stmt(&self.function_body);
+
+        let final_value = match interpreter.evaluate_stmt(&self.function_body) {
+            Ok(val) => val,
+            Err(EvaluationError::ReturnValue(return_val)) => return_val,
+        };
 
         // reset interpreter env and return the function return value
         interpreter.env = original_env;

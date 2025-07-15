@@ -27,15 +27,16 @@ impl Interpreter {
             let _val = self.evaluate_decl(&decl);
         }
     }
-    fn evaluate_decl(&mut self, decl: &Declaration) -> LoxValue {
+    fn evaluate_decl(&mut self, decl: &Declaration) -> Result<LoxValue, EvaluationError> {
         match decl {
             Declaration::StmtDecl(stmt) => self.evaluate_stmt(stmt),
+
             Declaration::VarDecl { name, initializer } => {
                 let value = initializer
                     .as_ref() // NOTE: study this as_ref, related to options and shared references ?
                     .map_or(LoxValue::Nil, |expr| self.evaluate_expr(expr));
                 self.env.borrow_mut().define(&name.lexeme, value); // NOTE: borrow_mut vs get_mut
-                LoxValue::Nil
+                Ok(LoxValue::Nil)
             }
             Declaration::FuncDecl { name, params, body } => {
                 // register function in the environement as a callable
@@ -46,21 +47,21 @@ impl Interpreter {
                 self.env
                     .borrow_mut()
                     .define(&name.lexeme, LoxValue::Callable(callable_fn));
-                LoxValue::Nil
+                Ok(LoxValue::Nil)
             }
         }
     }
 
-    pub fn evaluate_stmt(&mut self, stmt: &Stmt) -> LoxValue {
+    pub fn evaluate_stmt(&mut self, stmt: &Stmt) -> Result<LoxValue, EvaluationError> {
         match stmt {
             Stmt::ExprStmt(expr) => {
                 let _expr = self.evaluate_expr(expr);
-                LoxValue::Nil
+                Ok(LoxValue::Nil)
             }
             Stmt::PrintStmt(expr) => {
                 let val = self.evaluate_expr(expr);
                 println!("{val:?}");
-                LoxValue::Nil
+                Ok(LoxValue::Nil)
             }
 
             Stmt::Block(declarations) => {
@@ -71,11 +72,11 @@ impl Interpreter {
                 // intepret declarations in the block with the new nested env
                 self.env = Rc::new(RefCell::new(block_env));
                 for decl in declarations {
-                    self.evaluate_decl(decl);
+                    self.evaluate_decl(decl)?;
                 }
 
                 self.env = original_env; // restaure interpreter original env
-                LoxValue::Nil
+                Ok(LoxValue::Nil)
             }
             Stmt::IfStmt {
                 condition,
@@ -87,16 +88,23 @@ impl Interpreter {
                     if let Some(stmt) = else_branch {
                         self.evaluate_stmt(stmt)
                     } else {
-                        LoxValue::Nil
+                        Ok(LoxValue::Nil)
                     }
                 }
                 _ => panic!("expect expression to evaluate to a boolean in if statement"),
             },
             Stmt::WhileStmt { condition, body } => {
                 while let LoxValue::Bool(true) = self.evaluate_expr(condition) {
-                    self.evaluate_stmt(body);
+                    self.evaluate_stmt(body)?;
                 }
-                LoxValue::Nil
+                Ok(LoxValue::Nil)
+            }
+            Stmt::Return(maybe_expr) => {
+                let return_value = match maybe_expr {
+                    Some(expr) => self.evaluate_expr(expr),
+                    None => LoxValue::Nil,
+                };
+                Err(EvaluationError::ReturnValue(return_value))
             }
         }
     }
@@ -249,4 +257,6 @@ impl Interpreter {
 }
 
 #[derive(Debug)]
-pub struct EvaluationError {}
+pub enum EvaluationError {
+    ReturnValue(LoxValue),
+}

@@ -9,7 +9,7 @@ use crate::token::{Token, TokenType};
 //
 // funcDecl -> "fun" function ;
 // varDecl -> "var" + IDENTIFIER ( "=" expression )? ";" ;
-// statement -> exprStmt | IfStmt | printstmt | whileStmt | block ;
+// statement -> exprStmt | IfStmt | printstmt | whileStmt | block | returnStmt ;
 //
 // function -> IDENTIFIER "(" parameters? ")" block ;
 // parameters -> IDENTIFIER ( "," IDENTIFIER )* ;
@@ -20,6 +20,7 @@ use crate::token::{Token, TokenType};
 // printStmt -> "print" expression ";" ;
 // whileStmt -> "while" "(" expression ")" statement ;
 // block -> "{" + declaration* + "}" ;
+// returnStmt -> "return" + expression? + ";" ;
 //
 // expression -> assignement ;
 // assignment -> IDENTIFIER "=" assignement | logic_or ;
@@ -153,6 +154,7 @@ pub enum Stmt {
     },
     PrintStmt(Expr),
     Block(Vec<Declaration>),
+    Return(Option<Box<Expr>>),
 }
 
 #[derive(Debug, Clone, PartialEq)]

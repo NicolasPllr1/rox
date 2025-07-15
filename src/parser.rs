@@ -215,6 +215,11 @@ impl Parser {
                 tokens.next(); // consume "for"
                 Parser::for_stmt(tokens)
             }
+
+            Some(&tok) if tok.token_type == TokenType::Return => {
+                tokens.next(); // consume "return"
+                Parser::return_stmt(tokens)
+            }
             Some(_) => {
                 let expr_stmt = Parser::expr_stmt(tokens)?;
                 Ok(Stmt::ExprStmt(expr_stmt))
@@ -421,6 +426,27 @@ impl Parser {
         };
 
         Ok(body)
+    }
+
+    fn return_stmt(tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
+        // check for the *abscence* of an expression
+        let maybe_return_expr = match Parser::match_next_token_type(tokens, TokenType::Semicolon) {
+            Some(_) => None, // semicolon is next => no expression after the 'return' keyword
+            None => {
+                // return expression to parse
+                let return_expr = Box::new(Parser::expression(tokens)?);
+
+                // check for semicolon after the return expression
+                Parser::match_next_token_type(tokens, TokenType::Semicolon)
+                    .map(|_| Some(return_expr))
+                    .ok_or_else(|| ParserError {
+                        msg: "Expects semicolon after return statement".to_owned(),
+                        tok: tokens.next().cloned(),
+                    })?
+            }
+        };
+
+        Ok(Stmt::Return(maybe_return_expr))
     }
 
     fn expression(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
