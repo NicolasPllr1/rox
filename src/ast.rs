@@ -1,13 +1,18 @@
+use crate::callable::LoxCallable;
 use crate::token::{Token, TokenType};
 
 // Lox grammar, from lowest to highest precedence priority:
 //
 // program -> declaration* EOF ;
 //
-// declaration -> varDecl | statement;
+// declaration -> funcDecl | varDecl | statement;
 //
+// funcDecl -> "fun" function ;
 // varDecl -> "var" + IDENTIFIER ( "=" expression )? ";" ;
 // statement -> exprStmt | IfStmt | printstmt | whileStmt | block ;
+//
+// function -> IDENTIFIER "(" parameters? ")" block ;
+// parameters -> IDENTIFIER ( "," IDENTIFIER )* ;
 //
 // exprStmt -> expression ";" ;
 // forStmt -> "for" "(" ( varDecl | exprStmt | "," ) expression? ";" expression? ")" statement ;
@@ -38,9 +43,10 @@ pub enum LoxValue {
     Nil,
     Number(f32),
     String(String),
+    Callable(LoxCallable),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Literal(LoxValue),
     Unary {
@@ -70,7 +76,7 @@ pub enum Expr {
         arguments: Box<Vec<Expr>>, // NOTE: box of vec of vec of boxes ?
     },
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BinaryOp {
     Plus,
     Minus,
@@ -102,7 +108,7 @@ impl From<TokenType> for BinaryOp {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum UnaryOp {
     Bang,
     Minus,
@@ -117,7 +123,7 @@ impl From<TokenType> for UnaryOp {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LogicOp {
     Or,
     And,
@@ -132,7 +138,7 @@ impl From<TokenType> for LogicOp {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
     ExprStmt(Expr),
     IfStmt {
@@ -149,11 +155,16 @@ pub enum Stmt {
     Block(Vec<Declaration>),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Declaration {
     StmtDecl(Stmt),
     VarDecl {
         name: Token,
         initializer: Option<Expr>,
+    },
+    FuncDecl {
+        name: Token,
+        params: Vec<Token>,
+        body: Stmt, // should be Stmt::Block
     },
 }

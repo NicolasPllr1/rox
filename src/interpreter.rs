@@ -2,10 +2,11 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::ast::{BinaryOp, Declaration, Expr, LogicOp, LoxValue, Stmt, UnaryOp};
+use crate::callable::{Callable, LoxCallable};
 use crate::env::Env;
 
 pub struct Interpreter {
-    env: Rc<RefCell<Env>>,
+    pub env: Rc<RefCell<Env>>,
 }
 
 impl Default for Interpreter {
@@ -34,6 +35,17 @@ impl Interpreter {
                     .as_ref() // NOTE: study this as_ref, related to options and shared references ?
                     .map_or(LoxValue::Nil, |expr| self.evaluate_expr(expr));
                 self.env.borrow_mut().define(&name.lexeme, value); // NOTE: borrow_mut vs get_mut
+                LoxValue::Nil
+            }
+            Declaration::FuncDecl { name, params, body } => {
+                // register function in the environement as a callable
+                let callable_fn = LoxCallable {
+                    function_body: Box::new(body.clone()), // NOTE: clean this cloning mess
+                    params: Box::new(params.to_vec()),
+                };
+                self.env
+                    .borrow_mut()
+                    .define(&name.lexeme, LoxValue::Callable(callable_fn));
                 LoxValue::Nil
             }
         }
@@ -224,10 +236,14 @@ impl Interpreter {
                     ),
                 },
             },
-            Expr::Call {
-                callee: _,
-                arguments: _,
-            } => todo!(),
+            Expr::Call { callee, arguments } => match self.evaluate_expr(callee) {
+                LoxValue::Callable(lox_callable) => {
+                    let args: Vec<LoxValue> =
+                        arguments.iter().map(|p| self.evaluate_expr(p)).collect();
+                    lox_callable.call(self, args)
+                }
+                _ => panic!("expect callee to be callable"),
+            },
         }
     }
 }

@@ -1,10 +1,12 @@
 mod ast;
+mod callable;
 mod env;
 mod interpreter;
 mod parser;
 mod scanner;
 mod token;
-pub use ast::{BinaryOp, Declaration, Expr, LoxValue, UnaryOp};
+pub use ast::{BinaryOp, Declaration, Expr, LoxValue, Stmt, UnaryOp};
+pub use callable::LoxCallable;
 pub use env::Env;
 pub use interpreter::{EvaluationError, Interpreter};
 pub use parser::{Parser, ParserError};

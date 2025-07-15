@@ -37,6 +37,10 @@ impl Parser {
                 tokens.next();
                 Parser::var_decl(tokens)
             }
+            Some(&tok) if tok.token_type == TokenType::Fun => {
+                tokens.next();
+                Parser::func_decl(tokens)
+            }
             Some(_) => Ok(Declaration::StmtDecl(Parser::statement(tokens)?)),
             None => Err(ParserError {
                 msg: "declaration expects a token".to_owned(),
@@ -45,6 +49,79 @@ impl Parser {
         }
     }
 
+    fn func_decl(tokens: &mut Peekable<Iter<Token>>) -> Result<Declaration, ParserError> {
+        // function name
+        let name =
+            Parser::match_next_token_type(tokens, TokenType::Identifier).ok_or(ParserError {
+                msg: "expects identifier after 'fun' for the function name".to_owned(),
+                tok: tokens.next().cloned(),
+            })?;
+
+        // '('
+        let _ = Parser::match_next_token_type(tokens, TokenType::LeftParen).ok_or(ParserError {
+            msg: "expects '(' after function name".to_owned(),
+            tok: tokens.next().cloned(),
+        })?;
+
+        // Parse parameters
+        let mut params = Vec::new();
+        match tokens.peek() {
+            Some(tok) if tok.token_type != TokenType::RightParen => {
+                // first arg
+                let p = Parser::match_next_token_type(tokens, TokenType::Identifier).ok_or(
+                    ParserError {
+                        msg: "expects parameter name".to_owned(),
+                        tok: tokens.next().cloned(),
+                    },
+                )?;
+                params.push(p);
+
+                // follow-up args
+                while Parser::match_next_token_type(tokens, TokenType::Comma).is_some() {
+                    if params.len() < 255 {
+                        let p = Parser::match_next_token_type(tokens, TokenType::Identifier)
+                            .ok_or(ParserError {
+                                msg: "expects parameter name".to_owned(),
+                                tok: tokens.next().cloned(),
+                            })?;
+                        params.push(p);
+                    } else {
+                        return Err(ParserError {
+                            msg: "Can't have more than 255 arguments".to_owned(),
+                            tok: tokens.next().cloned(), // NOTE: the use of cloned()
+                        });
+                    }
+                }
+            }
+            _ => (),
+        }
+
+        // ')'
+        let _ =
+            Parser::match_next_token_type(tokens, TokenType::RightParen).ok_or(ParserError {
+                msg: "function declaration expects ')' after parameters".to_owned(),
+                tok: tokens.next().cloned(),
+            })?;
+
+        // Parse the function body
+
+        // '{'
+        let _ = Parser::match_next_token_type(tokens, TokenType::LeftBrace).ok_or(ParserError {
+            msg: "expects '{' before function body".to_owned(),
+            tok: tokens.next().cloned(),
+        })?;
+
+        let body = Stmt::Block(Parser::block(tokens)?);
+
+        // '}'
+        let _ =
+            Parser::match_next_token_type(tokens, TokenType::RightBrace).ok_or(ParserError {
+                msg: "expects '}' after function body".to_owned(),
+                tok: tokens.next().cloned(),
+            })?;
+
+        Ok(Declaration::FuncDecl { name, params, body })
+    }
     fn var_decl(tokens: &mut Peekable<Iter<Token>>) -> Result<Declaration, ParserError> {
         // var just got consumed
         // pattern is: var IDENTIFIER (= expr)? ";"
