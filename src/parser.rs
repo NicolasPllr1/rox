@@ -52,15 +52,20 @@ impl Parser {
     fn func_decl(tokens: &mut Peekable<Iter<Token>>) -> Result<Declaration, ParserError> {
         // function name
         let name =
-            Parser::match_next_token_type(tokens, TokenType::Identifier).ok_or(ParserError {
-                msg: "expects identifier after 'fun' for the function name".to_owned(),
-                tok: tokens.next().cloned(),
+            Parser::match_next_token_type(tokens, TokenType::Identifier).ok_or_else(|| {
+                ParserError {
+                    msg: "expects identifier after 'fun' for the function name".to_owned(),
+                    tok: tokens.next().cloned(), // ok_or_else to avoid calling .next() in the Ok
+                                                 // case
+                }
             })?;
 
         // '('
-        let _ = Parser::match_next_token_type(tokens, TokenType::LeftParen).ok_or(ParserError {
-            msg: "expects '(' after function name".to_owned(),
-            tok: tokens.next().cloned(),
+        let _ = Parser::match_next_token_type(tokens, TokenType::LeftParen).ok_or_else(|| {
+            ParserError {
+                msg: "expects '(' after function name".to_owned(),
+                tok: tokens.next().cloned(),
+            }
         })?;
 
         // Parse parameters
@@ -68,8 +73,8 @@ impl Parser {
         match tokens.peek() {
             Some(tok) if tok.token_type != TokenType::RightParen => {
                 // first arg
-                let p = Parser::match_next_token_type(tokens, TokenType::Identifier).ok_or(
-                    ParserError {
+                let p = Parser::match_next_token_type(tokens, TokenType::Identifier).ok_or_else(
+                    || ParserError {
                         msg: "expects parameter name".to_owned(),
                         tok: tokens.next().cloned(),
                     },
@@ -80,7 +85,7 @@ impl Parser {
                 while Parser::match_next_token_type(tokens, TokenType::Comma).is_some() {
                     if params.len() < 255 {
                         let p = Parser::match_next_token_type(tokens, TokenType::Identifier)
-                            .ok_or(ParserError {
+                            .ok_or_else(|| ParserError {
                                 msg: "expects parameter name".to_owned(),
                                 tok: tokens.next().cloned(),
                             })?;
@@ -97,28 +102,32 @@ impl Parser {
         }
 
         // ')'
-        let _ =
-            Parser::match_next_token_type(tokens, TokenType::RightParen).ok_or(ParserError {
+        let _ = Parser::match_next_token_type(tokens, TokenType::RightParen).ok_or_else(|| {
+            ParserError {
                 msg: "function declaration expects ')' after parameters".to_owned(),
                 tok: tokens.next().cloned(),
-            })?;
+            }
+        })?;
 
         // Parse the function body
 
         // '{'
-        let _ = Parser::match_next_token_type(tokens, TokenType::LeftBrace).ok_or(ParserError {
-            msg: "expects '{' before function body".to_owned(),
-            tok: tokens.next().cloned(),
+        let _ = Parser::match_next_token_type(tokens, TokenType::LeftBrace).ok_or_else(|| {
+            ParserError {
+                msg: "expects '{' before function body".to_owned(),
+                tok: tokens.next().cloned(),
+            }
         })?;
 
         let body = Stmt::Block(Parser::block(tokens)?);
 
         // '}'
-        let _ =
-            Parser::match_next_token_type(tokens, TokenType::RightBrace).ok_or(ParserError {
+        let _ = Parser::match_next_token_type(tokens, TokenType::RightBrace).ok_or_else(|| {
+            ParserError {
                 msg: "expects '}' after function body".to_owned(),
                 tok: tokens.next().cloned(),
-            })?;
+            }
+        })?;
 
         Ok(Declaration::FuncDecl { name, params, body })
     }
