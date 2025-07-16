@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::ast::LoxValue;
 use crate::token::Token;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Env {
     enclosing: Option<Rc<RefCell<Env>>>, // parent environement. To implement scope.
     values: HashMap<String, LoxValue>,

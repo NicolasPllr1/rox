@@ -43,6 +43,8 @@ impl Interpreter {
                 let callable_fn = LoxCallable {
                     function_body: Box::new(body.clone()), // NOTE: clean this cloning mess
                     params: Box::new(params.to_vec()),
+                    closure: Rc::clone(&self.env), // capture the current environament at
+                                                   // declaration-time
                 };
                 self.env
                     .borrow_mut()

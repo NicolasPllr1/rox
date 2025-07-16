@@ -12,6 +12,7 @@ pub trait Callable {
 pub struct LoxCallable {
     pub function_body: Box<Stmt>,
     pub params: Box<Vec<Token>>, // all identifiers ?
+    pub closure: Rc<RefCell<Env>>,
 }
 
 impl Callable for LoxCallable {
@@ -25,7 +26,7 @@ impl Callable for LoxCallable {
 
         // New env for the fn execution, associate args with params
         let original_env = Rc::clone(&interpreter.env);
-        let mut fn_execution_env = Env::new_from(&interpreter.env);
+        let mut fn_execution_env = Env::new_from(&self.closure);
 
         // binds args value to parameters names in the fn execution env
         let () = zip(self.params.to_vec(), args)
