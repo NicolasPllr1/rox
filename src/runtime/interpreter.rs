@@ -1,9 +1,9 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::ast::{BinaryOp, Declaration, Expr, LogicOp, LoxValue, Stmt, UnaryOp};
-use crate::callable::{Callable, LoxCallable};
-use crate::env::Env;
+use crate::parsing::ast::{BinaryOp, Declaration, Expr, LogicOp, LoxValue, Stmt, UnaryOp};
+use crate::runtime::callable::{Callable, LoxCallable};
+use crate::runtime::env::Env;
 
 pub struct Interpreter {
     pub env: Rc<RefCell<Env>>,

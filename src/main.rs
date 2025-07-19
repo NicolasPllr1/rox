@@ -1,11 +1,10 @@
-use core::fmt;
 use rox::EvaluationError;
 use rox::Interpreter;
 use rox::Scanner;
 use rox::{Parser, ParserError};
-use std::io::{self, BufRead};
-
+use std::fmt;
 use std::fs;
+use std::io::{self, BufRead};
 
 fn main() -> Result<(), InterpreterError> {
     let mut args = std::env::args();
@@ -59,7 +58,7 @@ fn run_prompt() -> Result<(), std::io::Error> {
 enum InterpreterError {
     Io(std::io::Error),
     Parser(ParserError),
-    Evaluation(EvaluationError),
+    Evaluation,
 }
 
 impl fmt::Display for InterpreterError {
@@ -74,7 +73,7 @@ impl fmt::Display for InterpreterError {
                 }
             }
 
-            InterpreterError::Evaluation(_) => write!(f, "Evaluation error")?,
+            InterpreterError::Evaluation => write!(f, "Evaluation error")?,
         }
         Ok(())
     }
@@ -92,7 +91,7 @@ impl From<ParserError> for InterpreterError {
     }
 }
 impl From<EvaluationError> for InterpreterError {
-    fn from(e: EvaluationError) -> Self {
-        InterpreterError::Evaluation(e)
+    fn from(_: EvaluationError) -> Self {
+        InterpreterError::Evaluation
     }
 }

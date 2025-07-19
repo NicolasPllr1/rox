@@ -2,8 +2,8 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::ast::LoxValue;
-use crate::token::Token;
+use crate::lexing::token::Token;
+use crate::parsing::ast::LoxValue;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Env {

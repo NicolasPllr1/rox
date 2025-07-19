@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
-use crate::token::{Token, TokenType};
+use crate::lexing::token::{Token, TokenType};
 use std::{iter::Peekable, slice::Iter};
 
-use crate::ast::{BinaryOp, Declaration, Expr, LogicOp, LoxValue, Stmt, UnaryOp};
+use crate::parsing::ast::{BinaryOp, Declaration, Expr, LogicOp, LoxValue, Stmt, UnaryOp};
 
 #[derive(Debug)]
 pub struct ParserError {

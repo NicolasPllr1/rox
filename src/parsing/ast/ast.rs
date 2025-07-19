@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 
-use crate::callable::LoxCallable;
-use crate::token::{Token, TokenType};
+use crate::lexing::token::{Token, TokenType};
+use crate::runtime::callable::LoxCallable;
 
 // Lox grammar, from lowest to highest precedence priority:
 //

@@ -1,4 +1,4 @@
-use crate::token::{create_keywords_map, Token, TokenType};
+use crate::lexing::token::{create_keywords_map, Token, TokenType};
 
 #[allow(dead_code)]
 #[derive(Debug)]
