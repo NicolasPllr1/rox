@@ -29,16 +29,25 @@ impl Interpreter {
     }
     fn evaluate_decl(&mut self, decl: &Declaration) -> Result<LoxValue, EvaluationError> {
         match decl {
-            Declaration::StmtDecl(stmt) => self.evaluate_stmt(stmt),
+            Declaration::StmtDecl { id: _, stmt } => self.evaluate_stmt(stmt),
 
-            Declaration::VarDecl { name, initializer } => {
+            Declaration::VarDecl {
+                id: _,
+                name,
+                initializer,
+            } => {
                 let value = initializer
                     .as_ref() // NOTE: study this as_ref, related to options and shared references ?
                     .map_or(LoxValue::Nil, |expr| self.evaluate_expr(expr));
                 self.env.borrow_mut().define(&name.lexeme, value); // NOTE: borrow_mut vs get_mut
                 Ok(LoxValue::Nil)
             }
-            Declaration::FuncDecl { name, params, body } => {
+            Declaration::FuncDecl {
+                id: _,
+                name,
+                params,
+                body,
+            } => {
                 // register function in the environement as a callable
                 let callable_fn = LoxCallable {
                     function_body: Box::new(body.clone()), // NOTE: clean this cloning mess
@@ -56,17 +65,20 @@ impl Interpreter {
 
     pub fn evaluate_stmt(&mut self, stmt: &Stmt) -> Result<LoxValue, EvaluationError> {
         match stmt {
-            Stmt::ExprStmt(expr) => {
+            Stmt::ExprStmt { id: _, expr } => {
                 let _expr = self.evaluate_expr(expr);
                 Ok(LoxValue::Nil)
             }
-            Stmt::PrintStmt(expr) => {
+            Stmt::PrintStmt { id: _, expr } => {
                 let val = self.evaluate_expr(expr);
                 println!("{val:?}");
                 Ok(LoxValue::Nil)
             }
 
-            Stmt::Block(declarations) => {
+            Stmt::Block {
+                id: _,
+                declarations,
+            } => {
                 // create new env and evaluate all inner statements in it
                 let original_env = Rc::clone(&self.env);
                 let block_env = Env::new_from(&self.env);
@@ -81,6 +93,7 @@ impl Interpreter {
                 Ok(LoxValue::Nil)
             }
             Stmt::IfStmt {
+                id: _,
                 condition,
                 then_branch,
                 else_branch,
@@ -95,13 +108,20 @@ impl Interpreter {
                 }
                 _ => panic!("expect expression to evaluate to a boolean in if statement"),
             },
-            Stmt::WhileStmt { condition, body } => {
+            Stmt::WhileStmt {
+                id: _,
+                condition,
+                body,
+            } => {
                 while let LoxValue::Bool(true) = self.evaluate_expr(condition) {
                     self.evaluate_stmt(body)?;
                 }
                 Ok(LoxValue::Nil)
             }
-            Stmt::Return(maybe_expr) => {
+            Stmt::Return {
+                id: _,
+                expr: maybe_expr,
+            } => {
                 let return_value = match maybe_expr {
                     Some(expr) => self.evaluate_expr(expr),
                     None => LoxValue::Nil,
@@ -113,8 +133,8 @@ impl Interpreter {
 
     pub fn evaluate_expr(&mut self, expr: &Expr) -> LoxValue {
         match expr {
-            Expr::Literal(v) => v.clone(),
-            Expr::Unary { op, right } => match op {
+            Expr::Literal { id: _, value } => value.clone(),
+            Expr::Unary { id: _, op, right } => match op {
                 UnaryOp::Minus => {
                     if let LoxValue::Number(n) = self.evaluate_expr(right) {
                         LoxValue::Number(-n)
@@ -132,7 +152,12 @@ impl Interpreter {
                 }
             },
 
-            Expr::Binary { left, op, right } => match op {
+            Expr::Binary {
+                id: _,
+                left,
+                op,
+                right,
+            } => match op {
                 BinaryOp::Plus => match (self.evaluate_expr(left), self.evaluate_expr(right)) {
                     (LoxValue::Number(n_left), LoxValue::Number(n_right)) => {
                         LoxValue::Number(n_left + n_right)
@@ -215,15 +240,20 @@ impl Interpreter {
                     }
                 }
             },
-            Expr::Grouping(expr) => self.evaluate_expr(expr),
-            Expr::Variable { name } => self.env.borrow().get(&name.lexeme).clone(),
-            Expr::Assign { name, value } => {
+            Expr::Grouping { id: _, group: expr } => self.evaluate_expr(expr),
+            Expr::Variable { id: _, name } => self.env.borrow().get(&name.lexeme).clone(),
+            Expr::Assign { id: _, name, value } => {
                 let final_value = self.evaluate_expr(value);
                 self.env.borrow_mut().assign(name, final_value.clone());
                 final_value
             }
 
-            Expr::Logical { left, op, right } => match op {
+            Expr::Logical {
+                id: _,
+                left,
+                op,
+                right,
+            } => match op {
                 // short-circuiting logical operators
                 LogicOp::Or => match self.evaluate_expr(left) {
                     LoxValue::Bool(true) => LoxValue::Bool(true),
@@ -246,7 +276,11 @@ impl Interpreter {
                     ),
                 },
             },
-            Expr::Call { callee, arguments } => match self.evaluate_expr(callee) {
+            Expr::Call {
+                id: _,
+                callee,
+                arguments,
+            } => match self.evaluate_expr(callee) {
                 LoxValue::Callable(lox_callable) => {
                     let args: Vec<LoxValue> =
                         arguments.iter().map(|p| self.evaluate_expr(p)).collect();

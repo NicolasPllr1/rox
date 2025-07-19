@@ -11,10 +11,20 @@ pub struct ParserError {
     pub tok: Option<Token>,
 }
 
-pub struct Parser {}
+pub struct Parser {
+    current_node_id: usize,
+}
 
 impl Parser {
-    pub fn parse(tokens: Vec<Token>) -> Result<Vec<Declaration>, ParserError> {
+    pub fn new() -> Parser {
+        Parser { current_node_id: 0 }
+    }
+    pub fn new_id(&mut self) -> usize {
+        self.current_node_id += 1;
+        self.current_node_id
+    }
+
+    pub fn parse(&mut self, tokens: Vec<Token>) -> Result<Vec<Declaration>, ParserError> {
         let mut tokens = tokens.iter().peekable();
         let mut declarations = Vec::new();
         while let Some(&tok) = tokens.peek() {
@@ -22,7 +32,7 @@ impl Parser {
                 return Ok(declarations);
             }
 
-            let decl = Parser::declaration(&mut tokens)?;
+            let decl = self.declaration(&mut tokens)?;
             declarations.push(decl);
         }
         Err(ParserError {
@@ -31,17 +41,23 @@ impl Parser {
         })
     }
 
-    fn declaration(tokens: &mut Peekable<Iter<Token>>) -> Result<Declaration, ParserError> {
+    fn declaration(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token>>,
+    ) -> Result<Declaration, ParserError> {
         match tokens.peek() {
             Some(&tok) if tok.token_type == TokenType::Var => {
                 tokens.next();
-                Parser::var_decl(tokens)
+                self.var_decl(tokens)
             }
             Some(&tok) if tok.token_type == TokenType::Fun => {
                 tokens.next();
-                Parser::func_decl(tokens)
+                self.func_decl(tokens)
             }
-            Some(_) => Ok(Declaration::StmtDecl(Parser::statement(tokens)?)),
+            Some(_) => Ok(Declaration::StmtDecl {
+                id: self.new_id(),
+                stmt: self.statement(tokens)?,
+            }),
             None => Err(ParserError {
                 msg: "declaration expects a token".to_owned(),
                 tok: None,
@@ -49,7 +65,10 @@ impl Parser {
         }
     }
 
-    fn func_decl(tokens: &mut Peekable<Iter<Token>>) -> Result<Declaration, ParserError> {
+    fn func_decl(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token>>,
+    ) -> Result<Declaration, ParserError> {
         // function name
         let name =
             Parser::match_next_token_type(tokens, TokenType::Identifier).ok_or_else(|| {
@@ -119,7 +138,10 @@ impl Parser {
             }
         })?;
 
-        let body = Stmt::Block(Parser::block(tokens)?);
+        let body = Stmt::Block {
+            id: self.new_id(),
+            declarations: self.block(tokens)?,
+        };
 
         // '}'
         let _ = Parser::match_next_token_type(tokens, TokenType::RightBrace).ok_or_else(|| {
@@ -129,9 +151,14 @@ impl Parser {
             }
         })?;
 
-        Ok(Declaration::FuncDecl { name, params, body })
+        Ok(Declaration::FuncDecl {
+            id: self.new_id(),
+            name,
+            params,
+            body,
+        })
     }
-    fn var_decl(tokens: &mut Peekable<Iter<Token>>) -> Result<Declaration, ParserError> {
+    fn var_decl(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Declaration, ParserError> {
         // var just got consumed
         // pattern is: var IDENTIFIER (= expr)? ";"
         let var_decl = match tokens.peek() {
@@ -140,13 +167,15 @@ impl Parser {
                 match tokens.peek() {
                     Some(&tok) if tok.token_type == TokenType::Equal => {
                         tokens.next();
-                        let initializer = Parser::expression(tokens)?;
+                        let initializer = self.expression(tokens)?;
                         Declaration::VarDecl {
+                            id: self.new_id(),
                             name: name_tok.clone(),
                             initializer: Some(initializer),
                         }
                     }
                     _ => Declaration::VarDecl {
+                        id: self.new_id(),
                         name: name_tok.clone(),
                         initializer: None,
                     },
@@ -187,13 +216,16 @@ impl Parser {
         }
     }
 
-    fn statement(tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
+    fn statement(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
         match tokens.peek() {
             Some(tok) if tok.token_type == TokenType::Print => {
                 tokens.next();
-                let print_stmt = Parser::print_stmt(tokens)?;
+                let print_stmt = self.print_stmt(tokens)?;
                 match Parser::match_next_token_type(tokens, TokenType::Semicolon) {
-                    Some(_) => Ok(Stmt::PrintStmt(print_stmt)),
+                    Some(_) => Ok(Stmt::PrintStmt {
+                        id: self.new_id(),
+                        expr: print_stmt,
+                    }),
                     None => Err(ParserError {
                         msg: "print statement expects to end with a semicolon".to_owned(),
                         tok: tokens.next().cloned(),
@@ -202,10 +234,13 @@ impl Parser {
             }
             Some(&tok) if tok.token_type == TokenType::LeftBrace => {
                 tokens.next(); // consume left brace
-                let stmts_in_block = Parser::block(tokens)?;
+                let stmts_in_block = self.block(tokens)?;
 
                 match Parser::match_next_token_type(tokens, TokenType::RightBrace) {
-                    Some(_) => Ok(Stmt::Block(stmts_in_block)),
+                    Some(_) => Ok(Stmt::Block {
+                        id: self.new_id(),
+                        declarations: stmts_in_block,
+                    }),
                     None => Err(ParserError {
                         msg: "block statement expects to end with a right brace".to_owned(),
                         tok: tokens.next().cloned(),
@@ -214,30 +249,36 @@ impl Parser {
             }
             Some(&tok) if tok.token_type == TokenType::If => {
                 tokens.next(); // consume "if"
-                Parser::if_stmt(tokens)
+                self.if_stmt(tokens)
             }
             Some(&tok) if tok.token_type == TokenType::While => {
                 tokens.next(); // consume "while"
-                Parser::while_stmt(tokens)
+                self.while_stmt(tokens)
             }
             Some(&tok) if tok.token_type == TokenType::For => {
                 tokens.next(); // consume "for"
-                Parser::for_stmt(tokens)
+                self.for_stmt(tokens)
             }
 
             Some(&tok) if tok.token_type == TokenType::Return => {
                 tokens.next(); // consume "return"
-                Parser::return_stmt(tokens)
+                self.return_stmt(tokens)
             }
             Some(_) => {
-                let expr_stmt = Parser::expr_stmt(tokens)?;
-                Ok(Stmt::ExprStmt(expr_stmt))
+                let expr_stmt = self.expr_stmt(tokens)?;
+                Ok(Stmt::ExprStmt {
+                    id: self.new_id(),
+                    expr: expr_stmt,
+                })
             }
             None => panic!("Statement expects a token"),
         }
     }
 
-    fn block(tokens: &mut Peekable<Iter<Token>>) -> Result<Vec<Declaration>, ParserError> {
+    fn block(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token>>,
+    ) -> Result<Vec<Declaration>, ParserError> {
         // while we don't encounter '}', we parse what is expected to be a statement
         // error if we encounter EOF before '}'
         let mut stmts = Vec::new();
@@ -246,14 +287,14 @@ impl Parser {
             if tok.token_type == TokenType::RightBrace {
                 break;
             } else {
-                stmts.push(Parser::declaration(tokens)?);
+                stmts.push(self.declaration(tokens)?);
             }
         }
         Ok(stmts)
     }
 
-    fn expr_stmt(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
-        let expr = Parser::expression(tokens)?;
+    fn expr_stmt(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+        let expr = self.expression(tokens)?;
 
         match tokens.peek() {
             Some(&tok) if tok.token_type == TokenType::Semicolon => {
@@ -268,8 +309,8 @@ impl Parser {
         }
     }
 
-    fn print_stmt(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
-        let expr = Parser::expression(tokens)?;
+    fn print_stmt(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+        let expr = self.expression(tokens)?;
 
         match tokens.peek() {
             Some(&tok) if tok.token_type == TokenType::Semicolon => Ok(expr),
@@ -281,23 +322,24 @@ impl Parser {
         }
     }
 
-    fn if_stmt(tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
+    fn if_stmt(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
         // "if" was already consumed
         match tokens.peek() {
             Some(tok) if tok.token_type == TokenType::LeftParen => {
                 tokens.next(); // consume "("
-                let condition = Parser::expression(tokens)?;
+                let condition = self.expression(tokens)?;
                 match tokens.peek() {
                     Some(tok) if tok.token_type == TokenType::RightParen => {
                         tokens.next(); // consume ")"
-                        let then_branch = Box::new(Parser::statement(tokens)?);
+                        let then_branch = Box::new(self.statement(tokens)?);
                         let else_branch = match tokens.peek() {
                             Some(tok) if tok.token_type == TokenType::Else => {
-                                Some(Box::new(Parser::statement(tokens)?))
+                                Some(Box::new(self.statement(tokens)?))
                             }
                             _ => None,
                         };
                         Ok(Stmt::IfStmt {
+                            id: self.new_id(),
                             condition,
                             then_branch,
                             else_branch,
@@ -321,17 +363,21 @@ impl Parser {
         }
     }
 
-    fn while_stmt(tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
+    fn while_stmt(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
         // "if" was already consumed
         match tokens.peek() {
             Some(tok) if tok.token_type == TokenType::LeftParen => {
                 tokens.next(); // consume "("
-                let condition = Parser::expression(tokens)?;
+                let condition = self.expression(tokens)?;
                 match tokens.peek() {
                     Some(tok) if tok.token_type == TokenType::RightParen => {
                         tokens.next(); // consume ")"
-                        let body = Box::new(Parser::statement(tokens)?);
-                        Ok(Stmt::WhileStmt { condition, body })
+                        let body = Box::new(self.statement(tokens)?);
+                        Ok(Stmt::WhileStmt {
+                            id: self.new_id(),
+                            condition,
+                            body,
+                        })
                     }
                     _ => Err(ParserError {
                         msg: "condition in while statement must be followed by a right parenthesis"
@@ -351,7 +397,7 @@ impl Parser {
         }
     }
 
-    fn for_stmt(tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
+    fn for_stmt(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
         if Parser::match_next_token_type(tokens, TokenType::LeftParen).is_none() {
             return Err(ParserError {
                 msg: "expects a '(' after the 'for' keyword".to_owned(),
@@ -364,17 +410,24 @@ impl Parser {
             Some(&tok) if tok.token_type == TokenType::Semicolon => None,
             Some(&tok) if tok.token_type == TokenType::Var => {
                 tokens.next(); // consume 'var'
-                Some(Parser::var_decl(tokens)?)
+                Some(self.var_decl(tokens)?)
             }
-            _ => Some(Declaration::StmtDecl(Stmt::ExprStmt(Parser::expression(
-                tokens,
-            )?))),
+            _ => Some(Declaration::StmtDecl {
+                id: self.new_id(),
+                stmt: Stmt::ExprStmt {
+                    id: self.new_id(),
+                    expr: self.expression(tokens)?,
+                },
+            }),
         };
 
         let condition = match Parser::match_next_token_type(tokens, TokenType::Semicolon) {
-            Some(_) => Expr::Literal(LoxValue::Bool(true)),
+            Some(_) => Expr::Literal {
+                id: self.new_id(),
+                value: LoxValue::Bool(true),
+            },
             _ => {
-                let expr = Parser::expression(tokens)?;
+                let expr = self.expression(tokens)?;
                 if Parser::match_next_token_type(tokens, TokenType::Semicolon).is_some() {
                     expr
                 } else {
@@ -389,7 +442,7 @@ impl Parser {
         let increment = match Parser::match_next_token_type(tokens, TokenType::RightParen) {
             Some(_) => None,
             None => {
-                let expr = Parser::expression(tokens)?;
+                let expr = self.expression(tokens)?;
 
                 // NOTE: if/else or combinator ?
                 Parser::match_next_token_type(tokens, TokenType::RightParen)
@@ -412,38 +465,59 @@ impl Parser {
             }
         };
 
-        let mut body = Parser::statement(tokens)?;
+        let mut body = self.statement(tokens)?;
 
         // desugaring the for loop
         if increment.is_some() {
-            body = Stmt::Block(
-                [
-                    Declaration::StmtDecl(body),
-                    Declaration::StmtDecl(Stmt::ExprStmt(increment.unwrap())),
+            body = Stmt::Block {
+                id: self.new_id(),
+                declarations: [
+                    Declaration::StmtDecl {
+                        id: self.new_id(),
+                        stmt: body,
+                    },
+                    Declaration::StmtDecl {
+                        id: self.new_id(),
+                        stmt: Stmt::ExprStmt {
+                            id: self.new_id(),
+                            expr: increment.unwrap(),
+                        },
+                    },
                 ]
                 .into(),
-            );
+            };
         };
 
         body = Stmt::WhileStmt {
+            id: self.new_id(),
             condition,
             body: Box::new(body),
         };
 
         if initializer.is_some() {
-            body = Stmt::Block([initializer.unwrap(), Declaration::StmtDecl(body)].into());
+            body = Stmt::Block {
+                id: self.new_id(),
+                declarations: [
+                    initializer.unwrap(),
+                    Declaration::StmtDecl {
+                        id: self.new_id(),
+                        stmt: body,
+                    },
+                ]
+                .into(),
+            };
         };
 
         Ok(body)
     }
 
-    fn return_stmt(tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
+    fn return_stmt(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
         // check for the *abscence* of an expression
         let maybe_return_expr = match Parser::match_next_token_type(tokens, TokenType::Semicolon) {
             Some(_) => None, // semicolon is next => no expression after the 'return' keyword
             None => {
                 // return expression to parse
-                let return_expr = Box::new(Parser::expression(tokens)?);
+                let return_expr = Box::new(self.expression(tokens)?);
 
                 // check for semicolon after the return expression
                 Parser::match_next_token_type(tokens, TokenType::Semicolon)
@@ -455,22 +529,26 @@ impl Parser {
             }
         };
 
-        Ok(Stmt::Return(maybe_return_expr))
+        Ok(Stmt::Return {
+            id: self.new_id(),
+            expr: maybe_return_expr,
+        })
     }
 
-    fn expression(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
-        Parser::assignment(tokens)
+    fn expression(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+        self.assignment(tokens)
     }
 
-    fn assignment(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
-        let expr = Parser::logic_or(tokens)?;
+    fn assignment(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+        let expr = self.logic_or(tokens)?;
 
         match tokens.peek() {
             Some(&tok_equal) if tok_equal.token_type == TokenType::Equal => {
                 tokens.next();
-                let value = Parser::assignment(tokens)?;
-                if let Expr::Variable { name } = expr {
+                let value = self.assignment(tokens)?;
+                if let Expr::Variable { id: _, name } = expr {
                     Ok(Expr::Assign {
+                        id: self.new_id(), // NOTE: new id here?
                         name,
                         value: Box::new(value),
                     })
@@ -485,12 +563,13 @@ impl Parser {
         }
     }
 
-    fn logic_or(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
-        let mut expr = Parser::logic_and(tokens)?;
+    fn logic_or(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+        let mut expr = self.logic_and(tokens)?;
 
         while Parser::match_next_token_type(tokens, TokenType::Or).is_some() {
-            let right = Parser::logic_and(tokens)?;
+            let right = self.logic_and(tokens)?;
             expr = Expr::Logical {
+                id: self.new_id(),
                 left: Box::new(expr),
                 op: LogicOp::Or,
                 right: Box::new(right),
@@ -498,12 +577,13 @@ impl Parser {
         }
         Ok(expr)
     }
-    fn logic_and(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
-        let mut expr = Parser::equality(tokens)?;
+    fn logic_and(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+        let mut expr = self.equality(tokens)?;
 
         while Parser::match_next_token_type(tokens, TokenType::And).is_some() {
-            let right = Parser::equality(tokens)?;
+            let right = self.equality(tokens)?;
             expr = Expr::Logical {
+                id: self.new_id(),
                 left: Box::new(expr),
                 op: LogicOp::And,
                 right: Box::new(right),
@@ -512,8 +592,8 @@ impl Parser {
         Ok(expr)
     }
 
-    fn equality(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
-        let mut expr = Parser::comparison(tokens)?;
+    fn equality(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+        let mut expr = self.comparison(tokens)?;
 
         while let Some(&tok) = tokens.peek() {
             match tok.token_type {
@@ -521,8 +601,13 @@ impl Parser {
                     tokens.next();
                     let left = Box::new(expr);
                     let op = BinaryOp::from(tok.token_type);
-                    let right = Box::new(Parser::comparison(tokens)?);
-                    expr = Expr::Binary { left, op, right };
+                    let right = Box::new(self.comparison(tokens)?);
+                    expr = Expr::Binary {
+                        id: self.new_id(),
+                        left,
+                        op,
+                        right,
+                    };
                 }
                 _ => break,
             };
@@ -535,8 +620,8 @@ impl Parser {
     // program hangs on the test example ?
     // NOTE: understand the need for references around the peekable tokens and in Some(&tok) =
     // tokens.peek()
-    fn comparison(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
-        let mut expr = Parser::term(tokens)?;
+    fn comparison(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+        let mut expr = self.term(tokens)?;
 
         while let Some(&tok) = tokens.peek() {
             match tok.token_type {
@@ -547,8 +632,13 @@ impl Parser {
                     tokens.next();
                     let left = Box::new(expr);
                     let op = BinaryOp::from(tok.token_type);
-                    let right = Box::new(Parser::term(tokens)?);
-                    expr = Expr::Binary { left, op, right };
+                    let right = Box::new(self.term(tokens)?);
+                    expr = Expr::Binary {
+                        id: self.new_id(),
+                        left,
+                        op,
+                        right,
+                    };
                 }
                 _ => break,
             };
@@ -556,8 +646,8 @@ impl Parser {
 
         Ok(expr)
     }
-    fn term(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
-        let mut expr = Parser::factor(tokens)?;
+    fn term(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+        let mut expr = self.factor(tokens)?;
 
         while let Some(&tok) = tokens.peek() {
             match tok.token_type {
@@ -565,8 +655,13 @@ impl Parser {
                     tokens.next();
                     let left = Box::new(expr);
                     let op = BinaryOp::from(tok.token_type);
-                    let right = Box::new(Parser::comparison(tokens)?);
-                    expr = Expr::Binary { left, op, right };
+                    let right = Box::new(self.comparison(tokens)?);
+                    expr = Expr::Binary {
+                        id: self.new_id(),
+                        left,
+                        op,
+                        right,
+                    };
                 }
                 _ => break,
             };
@@ -574,8 +669,8 @@ impl Parser {
 
         Ok(expr)
     }
-    fn factor(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
-        let mut expr = Parser::unary(tokens)?;
+    fn factor(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+        let mut expr = self.unary(tokens)?;
 
         while let Some(&tok) = tokens.peek() {
             match tok.token_type {
@@ -583,8 +678,13 @@ impl Parser {
                     tokens.next();
                     let left = Box::new(expr);
                     let op = BinaryOp::from(tok.token_type);
-                    let right = Box::new(Parser::comparison(tokens)?);
-                    expr = Expr::Binary { left, op, right };
+                    let right = Box::new(self.comparison(tokens)?);
+                    expr = Expr::Binary {
+                        id: self.new_id(),
+                        left,
+                        op,
+                        right,
+                    };
                 }
                 _ => break,
             };
@@ -592,21 +692,25 @@ impl Parser {
 
         Ok(expr)
     }
-    fn unary(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+    fn unary(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
         match tokens.peek() {
             Some(&tok)
                 if tok.token_type == TokenType::Bang || tok.token_type == TokenType::Minus =>
             {
                 tokens.next();
                 let op = UnaryOp::from(tok.token_type);
-                let right = Box::new(Parser::unary(tokens)?);
-                Ok(Expr::Unary { op, right })
+                let right = Box::new(self.unary(tokens)?);
+                Ok(Expr::Unary {
+                    id: self.new_id(),
+                    op,
+                    right,
+                })
             }
-            _ => Parser::call(tokens),
+            _ => self.call(tokens),
         }
     }
-    fn call(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
-        let mut expr = Parser::primary(tokens)?;
+    fn call(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+        let mut expr = self.primary(tokens)?;
 
         while Parser::match_next_token_type(tokens, TokenType::LeftParen).is_some() {
             // left parenthesis just got consumed in the check
@@ -616,12 +720,12 @@ impl Parser {
             match tokens.peek() {
                 Some(tok) if tok.token_type != TokenType::RightParen => {
                     // first arg
-                    args.push(Parser::expression(tokens)?);
+                    args.push(self.expression(tokens)?);
 
                     // follow-up args
                     while Parser::match_next_token_type(tokens, TokenType::Comma).is_some() {
                         if args.len() < 255 {
-                            args.push(Parser::expression(tokens)?);
+                            args.push(self.expression(tokens)?);
                         } else {
                             return Err(ParserError {
                                 msg: "Can't have more than 255 arguments".to_owned(),
@@ -636,6 +740,7 @@ impl Parser {
             match Parser::match_next_token_type(tokens, TokenType::RightParen) {
                 Some(_) => {
                     expr = Expr::Call {
+                        id: self.new_id(),
                         callee: Box::new(expr),
                         arguments: Box::new(args),
                     }
@@ -651,34 +756,55 @@ impl Parser {
 
         Ok(expr)
     }
-    fn primary(tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+    fn primary(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
         if let Some(&tok) = tokens.peek() {
             tokens.next(); // consume the token
             match tok.token_type {
-                TokenType::Number => Ok(Expr::Literal(LoxValue::Number(
-                    tok.literal
-                        .clone()
-                        .expect("Number token should have a literal")
-                        .parse()
-                        .expect("Number token should parse to a f32"),
-                ))),
-                TokenType::String => Ok(Expr::Literal(LoxValue::String(
-                    tok.literal.clone().expect("String should have literal"),
-                ))),
-                TokenType::True => Ok(Expr::Literal(LoxValue::Bool(true))),
-                TokenType::False => Ok(Expr::Literal(LoxValue::Bool(false))),
-                TokenType::Nil => Ok(Expr::Literal(LoxValue::Nil)),
+                TokenType::Number => Ok(Expr::Literal {
+                    id: self.new_id(),
+                    value: LoxValue::Number(
+                        tok.literal
+                            .clone()
+                            .expect("Number token should have a literal")
+                            .parse()
+                            .expect("Number token should parse to a f32"),
+                    ),
+                }),
+                TokenType::String => Ok(Expr::Literal {
+                    id: self.new_id(),
+                    value: LoxValue::String(
+                        tok.literal.clone().expect("String should have literal"),
+                    ),
+                }),
+                TokenType::True => Ok(Expr::Literal {
+                    id: self.new_id(),
+                    value: LoxValue::Bool(true),
+                }),
+                TokenType::False => Ok(Expr::Literal {
+                    id: self.new_id(),
+                    value: LoxValue::Bool(false),
+                }),
+                TokenType::Nil => Ok(Expr::Literal {
+                    id: self.new_id(),
+                    value: LoxValue::Nil,
+                }),
                 TokenType::LeftParen => {
                     tokens.next();
-                    let expr = Parser::expression(tokens)?;
+                    let expr = self.expression(tokens)?;
                     match tokens.peek() {
                         Some(&tok) if tok.token_type == TokenType::RightParen => (),
                         // Some(&tok) if tok.token_type == TokenType::RightParen => tokens.next(), // consume right parenthesis
                         _ => panic!("Expect right parenthesis after expression. Got {tok}"),
                     };
-                    Ok(Expr::Grouping(Box::new(expr)))
+                    Ok(Expr::Grouping {
+                        id: self.new_id(),
+                        group: Box::new(expr),
+                    })
                 }
-                TokenType::Identifier => Ok(Expr::Variable { name: tok.clone() }),
+                TokenType::Identifier => Ok(Expr::Variable {
+                    id: self.new_id(),
+                    name: tok.clone(),
+                }),
                 _ => Err(ParserError {
                     msg: "Expect expression".into(),
                     tok: Some(tok.clone()), // NOTE: after cloning, no need to dereference with *, why?
@@ -759,19 +885,32 @@ mod tests {
             },
         ]);
 
-        let ast = Parser::parse(tokens).expect("expects parsing not to fail");
+        let mut parser = Parser::new();
 
-        let gt_fn_call_ast: Declaration = Declaration::StmtDecl(Stmt::ExprStmt(Expr::Call {
-            callee: Box::new(Expr::Variable {
-                name: Token {
-                    token_type: TokenType::Identifier,
-                    lexeme: "hello_world".to_string(),
-                    literal: None,
-                    line: 1,
+        let ast = parser.parse(tokens).expect("expects parsing not to fail");
+
+        let gt_fn_call_ast: Declaration = Declaration::StmtDecl {
+            id: 1,
+            stmt: Stmt::ExprStmt {
+                id: 2,
+                expr: Expr::Call {
+                    id: 3,
+                    callee: Box::new(Expr::Variable {
+                        id: 4,
+                        name: Token {
+                            token_type: TokenType::Identifier,
+                            lexeme: "hello_world".to_string(),
+                            literal: None,
+                            line: 1,
+                        },
+                    }),
+                    arguments: Box::new(Vec::from([Expr::Literal {
+                        id: 5,
+                        value: LoxValue::Number(1.0),
+                    }])),
                 },
-            }),
-            arguments: Box::new(Vec::from([Expr::Literal(LoxValue::Number(1.0))])),
-        }));
+            },
+        };
 
         assert!(ast[0] == gt_fn_call_ast);
     }

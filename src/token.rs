@@ -3,7 +3,7 @@
 use core::fmt;
 use std::{collections::HashMap, str::FromStr};
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum TokenType {
     // Single-character tokens
     LeftParen,
@@ -102,7 +102,7 @@ impl fmt::Display for TokenType {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
