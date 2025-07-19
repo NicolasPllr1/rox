@@ -1,0 +1,36 @@
+# Lox grammar (lowest to highest precedence)
+
+program -> declaration* EOF ;
+
+declaration -> funcDecl | varDecl | statement;
+
+funcDecl -> "fun" function ;
+varDecl -> "var" + IDENTIFIER ( "=" expression )? ";" ;
+statement -> exprStmt | IfStmt | printstmt | whileStmt | block | returnStmt ;
+
+function -> IDENTIFIER "(" parameters? ")" block ;
+parameters -> IDENTIFIER ( "," IDENTIFIER )* ;
+
+exprStmt -> expression ";" ;
+forStmt -> "for" "(" ( varDecl | exprStmt | "," ) expression? ";" expression? ")" statement ;
+IfStmt -> "if" + "(" + expression + ")" statement ( "else" statement )? ;
+printStmt -> "print" expression ";" ;
+whileStmt -> "while" "(" expression ")" statement ;
+block -> "{" + declaration* + "}" ;
+returnStmt -> "return" + expression? + ";" ;
+
+expression -> assignement ;
+assignment -> IDENTIFIER "=" assignement | logic_or ;
+
+logic_or -> logic_and ( "or" logic_and )* ;
+logic_and -> equality ( "and" equality )* ;
+equality -> comparison ( ("!=" | "==" ) comparison )* ;
+comparison -> term ( (">" | ">=" | "<" | "<=") term )* ;
+term -> factor ( ("-" | "+" ) factor )* ;
+factor -> unary ( ("/" | "*" ) unary )* ;
+unary -> ("!" | "-") unary | call ;
+
+call -> primary ( "(" arguments? ")" )* ;
+arguments -> expression ( "," expression )* ;
+
+primary -> NUMBER | STRING | "true" | "false" | "Nil" | "(" expression ")" | IDENTIFIER ;

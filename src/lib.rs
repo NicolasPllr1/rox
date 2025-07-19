@@ -5,7 +5,10 @@ mod runtime;
 pub use lexing::scanner::Scanner;
 pub use lexing::token::Token;
 
-pub use parsing::ast::{BinaryOp, Declaration, Expr, LoxValue, Stmt, UnaryOp};
+pub use parsing::ast::declaration::Declaration;
+pub use parsing::ast::expression::{BinaryOp, Expr, LoxValue, UnaryOp};
+pub use parsing::ast::statement::Stmt;
+
 pub use parsing::parser::{Parser, ParserError};
 
 pub use runtime::callable::LoxCallable;

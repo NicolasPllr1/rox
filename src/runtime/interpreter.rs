@@ -1,7 +1,9 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::parsing::ast::{BinaryOp, Declaration, Expr, LogicOp, LoxValue, Stmt, UnaryOp};
+use crate::parsing::ast::declaration::Declaration;
+use crate::parsing::ast::expression::{BinaryOp, Expr, LogicOp, LoxValue, UnaryOp};
+use crate::parsing::ast::statement::Stmt;
 use crate::runtime::callable::{Callable, LoxCallable};
 use crate::runtime::env::Env;
 

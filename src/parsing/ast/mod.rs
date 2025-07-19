@@ -1,2 +1,3 @@
-pub mod ast;
-pub use ast::*;
+pub mod declaration;
+pub mod expression;
+pub mod statement;

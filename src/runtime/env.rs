@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::lexing::token::Token;
-use crate::parsing::ast::LoxValue;
+use crate::parsing::ast::expression::LoxValue;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Env {
