@@ -2,8 +2,8 @@ use crate::lexing::token::{create_keywords_map, Token, TokenType};
 
 #[allow(dead_code)]
 #[derive(Debug)]
-pub struct Scanner {
-    pub tokens: Vec<Token>,
+pub struct Scanner<'de> {
+    pub tokens: Vec<Token<'de>>,
     // pub keywords: HashMap<&'static str, TokenType>,
     errors: Option<Vec<ScannerError>>,
 }
@@ -15,8 +15,8 @@ enum ScannerError {
     UnterminatedString(usize),     // usize for the line nb
 }
 
-impl Scanner {
-    pub fn scan_tokens(source: &str) -> Scanner {
+impl Scanner<'_> {
+    pub fn scan_tokens<'de>(source: &'de str) -> Scanner<'de> {
         let mut tokens: Vec<Token> = Vec::new();
         let mut errors = Vec::new();
 
@@ -169,16 +169,20 @@ impl Scanner {
                     // last number to already be integer.decimal
                     {
                         // Number is of the form {integer}.{decimal}
-                        let _dot = tokens.pop().unwrap(); // TODO: (nico) I "know" unwrap should
-                                                          // not err here as the if statement checks for existence. Better way to
-                                                          // write this ?
-                        let integer_part = tokens.pop().unwrap().lexeme;
-                        let decimal_part = &source[start..current_idx + 1];
-
                         // pop the "{integer}" and the "."
+                        let _dot = tokens.pop();
+                        let integer_part = tokens.pop().unwrap().lexeme;
 
-                        &format!("{integer_part}.{decimal_part}") // line number did not change
-                                                                  // since {integer} first got parsed, so no need to do anything special for this
+                        // let decimal_part = &source[start..current_idx + 1];
+
+                        // rewrite the full lexeme
+                        // &format!("{integer_part}.{decimal_part}") // line number did not change
+
+                        let start_idx = start - integer_part.len() - 1; // -1 for the dot between
+
+                        // assert!(start_idx >= 0, "start index for lexeme should be >= 0");
+                        // grab two parts and the dot separating them: '{integer part}.{decimal part}''
+                        &source[start_idx..current_idx + 1]
                     } else {
                         &source[start..current_idx + 1]
                     }
@@ -197,28 +201,23 @@ impl Scanner {
             let literal = match token_type {
                 TokenType::String => match lexeme.len() {
                     // goal is to strip quotation marks
-                    2 => Some("".to_string()), // from "\"\"" to an empty string
+                    2 => Some(""), // from "\"\"" to an empty string
                     n if n > 2 => {
                         let l = &lexeme[1..lexeme.len() - 1];
-                        Some(l.to_string())
+                        Some(l)
                     }
                     _ => {
                         panic!("String literals should at least be the \"\", got: {lexeme}")
                     }
                 },
-                TokenType::Number => {
-                    if lexeme.contains(".") {
-                        Some(lexeme.to_string())
-                    } else {
-                        Some(format!("{lexeme}.0"))
-                    }
-                }
+                TokenType::Number => Some(lexeme), // deal with lox quirk
+                // in the Display impl. for Token
                 _ => None,
             };
 
             tokens.push(Token {
                 token_type,
-                lexeme: lexeme.into(),
+                lexeme,
                 literal,
                 line,
             });
@@ -226,7 +225,7 @@ impl Scanner {
 
         tokens.push(Token {
             token_type: TokenType::Eof,
-            lexeme: "".to_string(),
+            lexeme: "",
             literal: None,
             line,
         });
@@ -258,19 +257,19 @@ mod tests {
         let gt = vec![
             Token {
                 token_type: TokenType::LeftParen,
-                lexeme: "(".to_string(),
+                lexeme: "(",
                 literal: None,
                 line: 1,
             },
             Token {
                 token_type: TokenType::RightParen,
-                lexeme: ")".to_string(),
+                lexeme: ")",
                 literal: None,
                 line: 1,
             },
             Token {
                 token_type: TokenType::Eof,
-                lexeme: "".to_string(),
+                lexeme: "",
                 literal: None,
                 line: 1,
             },
@@ -289,7 +288,7 @@ mod tests {
 
         let gt = vec![Token {
             token_type: TokenType::Eof,
-            lexeme: "".to_string(),
+            lexeme: "",
             literal: None,
             line: 3,
         }]; // comments are ignored by the parser (~skipped) but counts line-wise
@@ -308,13 +307,13 @@ mod tests {
         let gt = vec![
             Token {
                 token_type: TokenType::Number,
-                lexeme: "123.456".to_string(),
-                literal: Some("123.456".to_string()),
+                lexeme: "123.456",
+                literal: Some("123.456"),
                 line: 1,
             },
             Token {
                 token_type: TokenType::Eof,
-                lexeme: "".to_string(),
+                lexeme: "",
                 literal: None,
                 line: 2,
             },
@@ -333,25 +332,25 @@ mod tests {
         let gt = vec![
             Token {
                 token_type: TokenType::Number,
-                lexeme: "123.456".to_string(),
-                literal: Some("123.456".to_string()),
+                lexeme: "123.456",
+                literal: Some("123.456"),
                 line: 1,
             },
             Token {
                 token_type: TokenType::Dot,
-                lexeme: ".".to_string(),
+                lexeme: ".",
                 literal: None,
                 line: 1,
             },
             Token {
                 token_type: TokenType::Number,
-                lexeme: "789".to_string(),
-                literal: Some("789.0".to_string()),
+                lexeme: "789",
+                literal: Some("789.0"),
                 line: 1,
             },
             Token {
                 token_type: TokenType::Eof,
-                lexeme: "".to_string(),
+                lexeme: "",
                 literal: None,
                 line: 1,
             },
@@ -371,19 +370,19 @@ mod tests {
         let gt = vec![
             Token {
                 token_type: TokenType::Dot,
-                lexeme: ".".to_string(),
+                lexeme: ".",
                 literal: None,
                 line: 1,
             },
             Token {
                 token_type: TokenType::Number,
-                lexeme: "456".to_string(),
-                literal: Some("456.0".to_string()),
+                lexeme: "456",
+                literal: Some("456.0"),
                 line: 1,
             },
             Token {
                 token_type: TokenType::Eof,
-                lexeme: "".to_string(),
+                lexeme: "",
                 literal: None,
                 line: 1,
             },
@@ -403,13 +402,13 @@ mod tests {
         let gt = vec![
             Token {
                 token_type: TokenType::BangEqual,
-                lexeme: "!=".to_string(),
+                lexeme: "!=",
                 literal: None,
                 line: 1,
             },
             Token {
                 token_type: TokenType::Eof,
-                lexeme: "".to_string(),
+                lexeme: "",
                 literal: None,
                 line: 1,
             },
@@ -429,25 +428,25 @@ mod tests {
         let gt = vec![
             Token {
                 token_type: TokenType::LeftParen,
-                lexeme: "(".to_string(),
+                lexeme: "(",
                 literal: None,
                 line: 1,
             },
             Token {
                 token_type: TokenType::String,
-                lexeme: "\"hello\"".to_string(),
+                lexeme: "\"hello\"",
                 literal: Some("hello".into()),
                 line: 1,
             },
             Token {
                 token_type: TokenType::RightParen,
-                lexeme: ")".to_string(),
+                lexeme: ")",
                 literal: None,
                 line: 1,
             },
             Token {
                 token_type: TokenType::Eof,
-                lexeme: "".to_string(),
+                lexeme: "",
                 literal: None,
                 line: 1,
             },
@@ -467,13 +466,13 @@ mod tests {
         let gt = vec![
             Token {
                 token_type: TokenType::String,
-                lexeme: "\"lorem\nipsum\"".to_string(),
-                literal: Some("lorem\nipsum".to_string()),
+                lexeme: "\"lorem\nipsum\"",
+                literal: Some("lorem\nipsum"),
                 line: 2,
             },
             Token {
                 token_type: TokenType::Eof,
-                lexeme: "".to_string(),
+                lexeme: "",
                 literal: None,
                 line: 2,
             },
@@ -493,13 +492,13 @@ mod tests {
         let gt = vec![
             Token {
                 token_type: TokenType::Number,
-                lexeme: "123.456".to_string(),
+                lexeme: "123.456",
                 literal: Some("123.456".into()),
                 line: 1,
             },
             Token {
                 token_type: TokenType::Eof,
-                lexeme: "".to_string(),
+                lexeme: "",
                 literal: None,
                 line: 1,
             },
@@ -519,43 +518,43 @@ mod tests {
         let gt = vec![
             Token {
                 token_type: TokenType::And,
-                lexeme: "and".to_string(),
+                lexeme: "and",
                 literal: None,
                 line: 1,
             },
             Token {
                 token_type: TokenType::Identifier,
-                lexeme: "andy".to_string(),
+                lexeme: "andy",
                 literal: None,
                 line: 1,
             },
             Token {
                 token_type: TokenType::If,
-                lexeme: "if".to_string(),
+                lexeme: "if",
                 literal: None,
                 line: 1,
             },
             Token {
                 token_type: TokenType::Identifier,
-                lexeme: "ifo".to_string(),
+                lexeme: "ifo",
                 literal: None,
                 line: 1,
             },
             Token {
                 token_type: TokenType::Else,
-                lexeme: "else".to_string(),
+                lexeme: "else",
                 literal: None,
                 line: 1,
             },
             Token {
                 token_type: TokenType::Identifier,
-                lexeme: "felse".to_string(),
+                lexeme: "felse",
                 literal: None,
                 line: 1,
             },
             Token {
                 token_type: TokenType::Eof,
-                lexeme: "".to_string(),
+                lexeme: "",
                 literal: None,
                 line: 1,
             },

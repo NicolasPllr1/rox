@@ -4,58 +4,58 @@ use crate::lexing::token::{Token, TokenType};
 use crate::runtime::callable::LoxCallable;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum LoxValue {
+pub enum LoxValue<'de> {
     Bool(bool),
     Nil,
     Number(f32),
-    String(String),
-    Callable(LoxCallable),
+    String(&'de str),
+    Callable(LoxCallable<'de>),
 }
 
 #[derive(Debug, Clone)]
-pub enum Expr {
+pub enum Expr<'de> {
     Literal {
         id: usize,
-        value: LoxValue,
+        value: LoxValue<'de>,
     },
     Unary {
         id: usize,
         op: UnaryOp,
-        right: Box<Expr>,
+        right: Box<Expr<'de>>,
     },
     Binary {
         id: usize,
-        left: Box<Expr>,
+        left: Box<Expr<'de>>,
         op: BinaryOp,
-        right: Box<Expr>,
+        right: Box<Expr<'de>>,
     },
     Grouping {
         id: usize,
-        group: Box<Expr>,
+        group: Box<Expr<'de>>,
     },
     Variable {
         id: usize,
-        name: Token,
+        name: Token<'de>,
     }, // name is an identifier token at first glance
     Assign {
         id: usize,
-        name: Token,
-        value: Box<Expr>,
+        name: Token<'de>,
+        value: Box<Expr<'de>>,
     },
     Logical {
         id: usize,
-        left: Box<Expr>,
+        left: Box<Expr<'de>>,
         op: LogicOp,
-        right: Box<Expr>,
+        right: Box<Expr<'de>>,
     },
     Call {
         id: usize,
-        callee: Box<Expr>,
-        arguments: Box<Vec<Expr>>, // NOTE: box of vec of vec of boxes ?
+        callee: Box<Expr<'de>>,
+        arguments: Box<Vec<Expr<'de>>>,
     },
 }
 
-impl Expr {
+impl Expr<'_> {
     pub fn id(&self) -> usize {
         match self {
             Expr::Literal { id, value: _ } => *id,
@@ -92,20 +92,20 @@ impl Expr {
     }
 }
 
-impl Hash for Expr {
+impl Hash for Expr<'_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // use the id
         self.id().hash(state);
     }
 }
 
-impl PartialEq for Expr {
+impl PartialEq for Expr<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.id() == other.id()
     }
 }
 
-impl Eq for Expr {}
+impl Eq for Expr<'_> {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BinaryOp {

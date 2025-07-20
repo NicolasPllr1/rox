@@ -2,24 +2,24 @@ use std::{cell::RefCell, iter::zip, rc::Rc};
 
 use crate::{Env, EvaluationError, Interpreter, LoxValue, Stmt, Token};
 
-pub trait Callable {
+pub trait Callable<'a> {
     fn arity(&self) -> usize;
-    fn call(&self, interpreter: &mut Interpreter, args: Vec<LoxValue>) -> LoxValue;
+    fn call(&self, interpreter: &mut Interpreter<'a>, args: Vec<LoxValue<'a>>) -> LoxValue<'a>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
 // NOTE: check this lifetime + move this to another module
-pub struct LoxCallable {
-    pub function_body: Box<Stmt>,
-    pub params: Box<Vec<Token>>, // all identifiers ?
-    pub closure: Rc<RefCell<Env>>,
+pub struct LoxCallable<'de> {
+    pub function_body: Box<Stmt<'de>>,
+    pub params: Box<Vec<Token<'de>>>, // all identifiers ?
+    pub closure: Rc<RefCell<Env<'de>>>,
 }
 
-impl Callable for LoxCallable {
+impl<'de> Callable<'de> for LoxCallable<'de> {
     fn arity(&self) -> usize {
         self.params.len()
     }
-    fn call(&self, interpreter: &mut Interpreter, args: Vec<LoxValue>) -> LoxValue {
+    fn call(&self, interpreter: &mut Interpreter<'de>, args: Vec<LoxValue<'de>>) -> LoxValue<'de> {
         if args.len() != self.arity() {
             panic!("Wrong number of arguments passed")
         }

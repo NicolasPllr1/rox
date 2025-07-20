@@ -5,25 +5,25 @@ use crate::parsing::ast::expression::Expr;
 use crate::parsing::ast::statement::Stmt;
 
 #[derive(Debug, Clone)]
-pub enum Declaration {
+pub enum Declaration<'de> {
     StmtDecl {
         id: usize,
-        stmt: Stmt,
+        stmt: Stmt<'de>,
     },
     VarDecl {
         id: usize,
-        name: Token,
-        initializer: Option<Expr>,
+        name: Token<'de>,
+        initializer: Option<Expr<'de>>,
     },
     FuncDecl {
         id: usize,
-        name: Token,
-        params: Vec<Token>,
-        body: Stmt, // should be Stmt::Block
+        name: Token<'de>,
+        params: Vec<Token<'de>>,
+        body: Stmt<'de>, // should be Stmt::Block
     },
 }
 
-impl Declaration {
+impl Declaration<'_> {
     pub fn id(&self) -> usize {
         match self {
             Declaration::StmtDecl { id, stmt: _ } => *id,
@@ -42,17 +42,17 @@ impl Declaration {
     }
 }
 
-impl Hash for Declaration {
+impl Hash for Declaration<'_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // use the id to hash
         self.id().hash(state);
     }
 }
 
-impl PartialEq for Declaration {
+impl PartialEq for Declaration<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.id() == other.id()
     }
 }
 
-impl Eq for Declaration {}
+impl Eq for Declaration<'_> {}

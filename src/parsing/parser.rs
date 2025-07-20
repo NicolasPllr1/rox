@@ -9,9 +9,9 @@ use crate::parsing::ast::declaration::Declaration;
 use crate::parsing::ast::statement::Stmt;
 
 #[derive(Debug)]
-pub struct ParserError {
+pub struct ParserError<'de> {
     pub msg: String,
-    pub tok: Option<Token>,
+    pub tok: Option<Token<'de>>,
 }
 
 pub struct Parser {
@@ -27,7 +27,10 @@ impl Parser {
         self.current_node_id
     }
 
-    pub fn parse(&mut self, tokens: Vec<Token>) -> Result<Vec<Declaration>, ParserError> {
+    pub fn parse<'de>(
+        &mut self,
+        tokens: Vec<Token<'de>>,
+    ) -> Result<Vec<Declaration<'de>>, ParserError<'de>> {
         let mut tokens = tokens.iter().peekable();
         let mut declarations = Vec::new();
         while let Some(&tok) = tokens.peek() {
@@ -44,10 +47,10 @@ impl Parser {
         })
     }
 
-    fn declaration(
+    fn declaration<'de>(
         &mut self,
-        tokens: &mut Peekable<Iter<Token>>,
-    ) -> Result<Declaration, ParserError> {
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Declaration<'de>, ParserError<'de>> {
         match tokens.peek() {
             Some(&tok) if tok.token_type == TokenType::Var => {
                 tokens.next();
@@ -68,10 +71,10 @@ impl Parser {
         }
     }
 
-    fn func_decl(
+    fn func_decl<'de>(
         &mut self,
-        tokens: &mut Peekable<Iter<Token>>,
-    ) -> Result<Declaration, ParserError> {
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Declaration<'de>, ParserError<'de>> {
         // function name
         let name =
             Parser::match_next_token_type(tokens, TokenType::Identifier).ok_or_else(|| {
@@ -161,7 +164,10 @@ impl Parser {
             body,
         })
     }
-    fn var_decl(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Declaration, ParserError> {
+    fn var_decl<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Declaration<'de>, ParserError<'de>> {
         // var just got consumed
         // pattern is: var IDENTIFIER (= expr)? ";"
         let var_decl = match tokens.peek() {
@@ -173,13 +179,13 @@ impl Parser {
                         let initializer = self.expression(tokens)?;
                         Declaration::VarDecl {
                             id: self.new_id(),
-                            name: name_tok.clone(),
+                            name: *name_tok,
                             initializer: Some(initializer),
                         }
                     }
                     _ => Declaration::VarDecl {
                         id: self.new_id(),
-                        name: name_tok.clone(),
+                        name: *name_tok,
                         initializer: None,
                     },
                 }
@@ -206,10 +212,10 @@ impl Parser {
     // check if the next token matches the provided next token type.
     // WILL CONSUME THE NEXT TOKEN.
     // If the next token does not exist (.peek returns None) or does not match, returns None.
-    fn match_next_token_type(
-        tokens: &mut Peekable<Iter<Token>>,
+    fn match_next_token_type<'de>(
+        tokens: &mut Peekable<Iter<Token<'de>>>,
         nxt_expected_type: TokenType,
-    ) -> Option<Token> {
+    ) -> Option<Token<'de>> {
         match tokens.peek() {
             Some(&next_tok) if next_tok.token_type == nxt_expected_type => {
                 tokens.next(); // consume the token
@@ -219,7 +225,10 @@ impl Parser {
         }
     }
 
-    fn statement(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
+    fn statement<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Stmt<'de>, ParserError<'de>> {
         match tokens.peek() {
             Some(tok) if tok.token_type == TokenType::Print => {
                 tokens.next();
@@ -278,10 +287,10 @@ impl Parser {
         }
     }
 
-    fn block(
+    fn block<'de>(
         &mut self,
-        tokens: &mut Peekable<Iter<Token>>,
-    ) -> Result<Vec<Declaration>, ParserError> {
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Vec<Declaration<'de>>, ParserError<'de>> {
         // while we don't encounter '}', we parse what is expected to be a statement
         // error if we encounter EOF before '}'
         let mut stmts = Vec::new();
@@ -296,7 +305,10 @@ impl Parser {
         Ok(stmts)
     }
 
-    fn expr_stmt(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+    fn expr_stmt<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Expr<'de>, ParserError<'de>> {
         let expr = self.expression(tokens)?;
 
         match tokens.peek() {
@@ -312,7 +324,10 @@ impl Parser {
         }
     }
 
-    fn print_stmt(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+    fn print_stmt<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Expr<'de>, ParserError<'de>> {
         let expr = self.expression(tokens)?;
 
         match tokens.peek() {
@@ -325,7 +340,10 @@ impl Parser {
         }
     }
 
-    fn if_stmt(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
+    fn if_stmt<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Stmt<'de>, ParserError<'de>> {
         // "if" was already consumed
         match tokens.peek() {
             Some(tok) if tok.token_type == TokenType::LeftParen => {
@@ -366,7 +384,10 @@ impl Parser {
         }
     }
 
-    fn while_stmt(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
+    fn while_stmt<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Stmt<'de>, ParserError<'de>> {
         // "if" was already consumed
         match tokens.peek() {
             Some(tok) if tok.token_type == TokenType::LeftParen => {
@@ -400,7 +421,10 @@ impl Parser {
         }
     }
 
-    fn for_stmt(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
+    fn for_stmt<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Stmt<'de>, ParserError<'de>> {
         if Parser::match_next_token_type(tokens, TokenType::LeftParen).is_none() {
             return Err(ParserError {
                 msg: "expects a '(' after the 'for' keyword".to_owned(),
@@ -514,7 +538,10 @@ impl Parser {
         Ok(body)
     }
 
-    fn return_stmt(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Stmt, ParserError> {
+    fn return_stmt<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Stmt<'de>, ParserError<'de>> {
         // check for the *abscence* of an expression
         let maybe_return_expr = match Parser::match_next_token_type(tokens, TokenType::Semicolon) {
             Some(_) => None, // semicolon is next => no expression after the 'return' keyword
@@ -538,11 +565,17 @@ impl Parser {
         })
     }
 
-    fn expression(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+    fn expression<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Expr<'de>, ParserError<'de>> {
         self.assignment(tokens)
     }
 
-    fn assignment(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+    fn assignment<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Expr<'de>, ParserError<'de>> {
         let expr = self.logic_or(tokens)?;
 
         match tokens.peek() {
@@ -566,7 +599,10 @@ impl Parser {
         }
     }
 
-    fn logic_or(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+    fn logic_or<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Expr<'de>, ParserError<'de>> {
         let mut expr = self.logic_and(tokens)?;
 
         while Parser::match_next_token_type(tokens, TokenType::Or).is_some() {
@@ -580,7 +616,10 @@ impl Parser {
         }
         Ok(expr)
     }
-    fn logic_and(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+    fn logic_and<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Expr<'de>, ParserError<'de>> {
         let mut expr = self.equality(tokens)?;
 
         while Parser::match_next_token_type(tokens, TokenType::And).is_some() {
@@ -595,7 +634,10 @@ impl Parser {
         Ok(expr)
     }
 
-    fn equality(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+    fn equality<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Expr<'de>, ParserError<'de>> {
         let mut expr = self.comparison(tokens)?;
 
         while let Some(&tok) = tokens.peek() {
@@ -623,7 +665,10 @@ impl Parser {
     // program hangs on the test example ?
     // NOTE: understand the need for references around the peekable tokens and in Some(&tok) =
     // tokens.peek()
-    fn comparison(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+    fn comparison<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Expr<'de>, ParserError<'de>> {
         let mut expr = self.term(tokens)?;
 
         while let Some(&tok) = tokens.peek() {
@@ -649,7 +694,10 @@ impl Parser {
 
         Ok(expr)
     }
-    fn term(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+    fn term<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Expr<'de>, ParserError<'de>> {
         let mut expr = self.factor(tokens)?;
 
         while let Some(&tok) = tokens.peek() {
@@ -658,9 +706,10 @@ impl Parser {
                     tokens.next();
                     let left = Box::new(expr);
                     let op = BinaryOp::from(tok.token_type);
+                    let id = self.new_id();
                     let right = Box::new(self.comparison(tokens)?);
                     expr = Expr::Binary {
-                        id: self.new_id(),
+                        id,
                         left,
                         op,
                         right,
@@ -672,7 +721,10 @@ impl Parser {
 
         Ok(expr)
     }
-    fn factor(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+    fn factor<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Expr<'de>, ParserError<'de>> {
         let mut expr = self.unary(tokens)?;
 
         while let Some(&tok) = tokens.peek() {
@@ -681,7 +733,8 @@ impl Parser {
                     tokens.next();
                     let left = Box::new(expr);
                     let op = BinaryOp::from(tok.token_type);
-                    let right = Box::new(self.comparison(tokens)?);
+                    let right = Box::new(self.comparison(tokens)?); // NOTE: error goes away once
+                                                                    // ParserError lifetime is annotated !
                     expr = Expr::Binary {
                         id: self.new_id(),
                         left,
@@ -695,7 +748,10 @@ impl Parser {
 
         Ok(expr)
     }
-    fn unary(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+    fn unary<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Expr<'de>, ParserError<'de>> {
         match tokens.peek() {
             Some(&tok)
                 if tok.token_type == TokenType::Bang || tok.token_type == TokenType::Minus =>
@@ -712,7 +768,10 @@ impl Parser {
             _ => self.call(tokens),
         }
     }
-    fn call(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+    fn call<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Expr<'de>, ParserError<'de>> {
         let mut expr = self.primary(tokens)?;
 
         while Parser::match_next_token_type(tokens, TokenType::LeftParen).is_some() {
@@ -759,7 +818,10 @@ impl Parser {
 
         Ok(expr)
     }
-    fn primary(&mut self, tokens: &mut Peekable<Iter<Token>>) -> Result<Expr, ParserError> {
+    fn primary<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Expr<'de>, ParserError<'de>> {
         if let Some(&tok) = tokens.peek() {
             tokens.next(); // consume the token
             match tok.token_type {
@@ -852,37 +914,37 @@ mod tests {
         let tokens = Vec::from([
             Token {
                 token_type: TokenType::Identifier,
-                lexeme: "hello_world".to_string(),
+                lexeme: "hello_world",
                 literal: None,
                 line: 1,
             },
             Token {
                 token_type: TokenType::LeftParen,
-                lexeme: "(".to_string(),
+                lexeme: "(",
                 literal: None,
                 line: 1,
             },
             Token {
                 token_type: TokenType::Number,
-                lexeme: "1.0".to_string(),
-                literal: Some("1.0".to_owned()),
+                lexeme: "1.0",
+                literal: Some("1.0"),
                 line: 1,
             },
             Token {
                 token_type: TokenType::RightParen,
-                lexeme: ")".to_string(),
+                lexeme: ")",
                 literal: None,
                 line: 1,
             },
             Token {
                 token_type: TokenType::Semicolon,
-                lexeme: ";".to_string(),
+                lexeme: ";",
                 literal: None,
                 line: 1,
             },
             Token {
                 token_type: TokenType::Eof,
-                lexeme: "".to_string(),
+                lexeme: "",
                 literal: None,
                 line: 1,
             },
@@ -902,7 +964,7 @@ mod tests {
                         id: 4,
                         name: Token {
                             token_type: TokenType::Identifier,
-                            lexeme: "hello_world".to_string(),
+                            lexeme: "hello_world",
                             literal: None,
                             line: 1,
                         },

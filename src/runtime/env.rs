@@ -6,35 +6,35 @@ use crate::lexing::token::Token;
 use crate::parsing::ast::expression::LoxValue;
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Env {
-    enclosing: Option<Rc<RefCell<Env>>>, // parent environement. To implement scope.
-    values: HashMap<String, LoxValue>,
+pub struct Env<'de> {
+    enclosing: Option<Rc<RefCell<Env<'de>>>>, // parent environement. To implement scope.
+    values: HashMap<&'de str, LoxValue<'de>>,
 }
 
-impl Env {
-    pub fn new() -> Env {
+impl<'de> Env<'de> {
+    pub fn new() -> Env<'de> {
         Env {
             enclosing: None,
             values: HashMap::new(),
         }
     }
 
-    pub fn new_from(enclosing: &Rc<RefCell<Env>>) -> Env {
+    pub fn new_from(enclosing: &Rc<RefCell<Env<'de>>>) -> Env<'de> {
         let mut env = Env::default();
         env.set_enclosing_env(enclosing);
         env
     }
 
-    pub fn set_enclosing_env(&mut self, enclosing: &Rc<RefCell<Env>>) {
+    pub fn set_enclosing_env(&mut self, enclosing: &Rc<RefCell<Env<'de>>>) {
         self.enclosing = Some(Rc::clone(&enclosing));
     }
-    pub fn define(&mut self, name: &str, value: LoxValue) {
-        self.values.insert(name.to_owned(), value);
+    pub fn define(&mut self, name: &'de str, value: LoxValue<'de>) {
+        self.values.insert(name, value);
     }
 
-    pub fn assign(&mut self, name: &Token, value: LoxValue) {
-        if self.values.contains_key(&name.lexeme) {
-            self.values.insert(name.lexeme.to_owned(), value);
+    pub fn assign(&mut self, name: &Token<'de>, value: &LoxValue<'de>) {
+        if self.values.contains_key(name.lexeme) {
+            self.values.insert(name.lexeme, value.clone());
         } else if let Some(parent_env_cell) = &self.enclosing {
             let mut parent_env = parent_env_cell.borrow_mut();
             parent_env.assign(name, value);
@@ -44,16 +44,18 @@ impl Env {
         }
     }
 
-    pub fn get(&self, name: &str) -> LoxValue {
-        // TODO: try to avoid cloning, introduced along with &parent_env_rc.borrow()
-
+    pub fn get(&self, name: &str) -> LoxValue<'de> {
         match self.values.get(name) {
             Some(val) => val.clone(),
             None => {
                 // NOTE: the importance of borrowing:
                 if let Some(parent_env_rc) = &self.enclosing {
-                    let parent_env: &Env = &parent_env_rc.borrow(); // NOTE: no need to borrow ?
-                    parent_env.get(name).clone()
+                    // NOTE: study this situation, 'a temporary with access to the borrow'
+                    // let owned_parent_env = Rc::clone(parent_env_rc).borrow();
+                    // owned_parent_env.get(name)
+                    // let parent_env_rc = Rc::clone(parent_env_rc);
+                    let val = parent_env_rc.borrow().get(name);
+                    val
                 } else {
                     panic!("Undefined variable {name}")
                 }
@@ -62,7 +64,7 @@ impl Env {
     }
 }
 
-impl Default for Env {
+impl Default for Env<'_> {
     fn default() -> Self {
         Self::new()
     }

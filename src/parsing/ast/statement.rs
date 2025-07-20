@@ -4,38 +4,38 @@ use crate::parsing::ast::declaration::Declaration;
 use crate::parsing::ast::expression::Expr;
 
 #[derive(Debug, Clone)]
-pub enum Stmt {
+pub enum Stmt<'de> {
     ExprStmt {
         id: usize,
-        expr: Expr,
+        expr: Expr<'de>,
     },
     IfStmt {
         id: usize,
-        condition: Expr,
-        then_branch: Box<Stmt>,
-        else_branch: Option<Box<Stmt>>,
+        condition: Expr<'de>,
+        then_branch: Box<Stmt<'de>>,
+        else_branch: Option<Box<Stmt<'de>>>,
     },
 
     WhileStmt {
         id: usize,
-        condition: Expr,
-        body: Box<Stmt>,
+        condition: Expr<'de>,
+        body: Box<Stmt<'de>>,
     },
     PrintStmt {
         id: usize,
-        expr: Expr,
+        expr: Expr<'de>,
     },
     Block {
         id: usize,
-        declarations: Vec<Declaration>,
+        declarations: Vec<Declaration<'de>>,
     },
     Return {
         id: usize,
-        expr: Option<Box<Expr>>,
+        expr: Option<Box<Expr<'de>>>,
     },
 }
 
-impl Stmt {
+impl Stmt<'_> {
     pub fn id(&self) -> usize {
         match self {
             Stmt::ExprStmt { id, expr: _ } => *id,
@@ -60,17 +60,17 @@ impl Stmt {
     }
 }
 
-impl Hash for Stmt {
+impl Hash for Stmt<'_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // use the id to hash
         self.id().hash(state);
     }
 }
 
-impl PartialEq for Stmt {
+impl PartialEq for Stmt<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.id() == other.id()
     }
 }
 
-impl Eq for Stmt {}
+impl Eq for Stmt<'_> {}

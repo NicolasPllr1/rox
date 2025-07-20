@@ -6,20 +6,25 @@ use std::fmt;
 use std::fs;
 use std::io::{self, BufRead};
 
-fn main() -> Result<(), InterpreterError> {
+fn main() {
     let mut args = std::env::args();
     args.next();
 
     if let Some(filename) = args.next() {
-        run_file(&filename)?;
+        let source = fs::read_to_string(filename).unwrap_or_else(|e| {
+            eprintln!("I/O error: {e}");
+            std::process::exit(1);
+        });
+        let _ = run(&source).unwrap_or_else(|e| {
+            eprintln!("Error: {e}");
+            std::process::exit(1);
+        });
     } else {
-        run_prompt()?;
+        let _ = run_prompt().unwrap();
     }
-
-    Ok(())
 }
 
-fn run(source: &str) -> Result<(), InterpreterError> {
+fn run<'de>(source: &'de str) -> Result<(), InterpreterError<'de>> {
     println!("Scanning/Lexing:");
     let scanner = Scanner::scan_tokens(source);
     let tokens = scanner.tokens;
@@ -33,15 +38,11 @@ fn run(source: &str) -> Result<(), InterpreterError> {
     }
 
     println!("\nEvaluation:");
-    let mut interpreter = Interpreter::default();
+    let mut interpreter = Interpreter::new();
     interpreter.evaluate(declarations);
     Ok(())
 }
 
-fn run_file(filename: &str) -> Result<(), InterpreterError> {
-    let raw_file_content = fs::read_to_string(filename)?;
-    run(&raw_file_content)
-}
 fn run_prompt() -> Result<(), std::io::Error> {
     let mut buffer = String::new();
     let stdin = io::stdin();
@@ -55,13 +56,13 @@ fn run_prompt() -> Result<(), std::io::Error> {
 }
 
 #[derive(Debug)]
-enum InterpreterError {
+enum InterpreterError<'de> {
     Io(std::io::Error),
-    Parser(ParserError),
+    Parser(ParserError<'de>),
     Evaluation,
 }
 
-impl fmt::Display for InterpreterError {
+impl fmt::Display for InterpreterError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             InterpreterError::Io(e) => write!(f, "Io Error: {e}")?,
@@ -79,18 +80,18 @@ impl fmt::Display for InterpreterError {
     }
 }
 
-impl From<std::io::Error> for InterpreterError {
+impl From<std::io::Error> for InterpreterError<'_> {
     fn from(e: std::io::Error) -> Self {
         InterpreterError::Io(e)
     }
 }
 
-impl From<ParserError> for InterpreterError {
-    fn from(e: ParserError) -> Self {
+impl<'de> From<ParserError<'de>> for InterpreterError<'de> {
+    fn from(e: ParserError<'de>) -> Self {
         InterpreterError::Parser(e)
     }
 }
-impl From<EvaluationError> for InterpreterError {
+impl<'de> From<EvaluationError<'de>> for InterpreterError<'de> {
     fn from(_: EvaluationError) -> Self {
         InterpreterError::Evaluation
     }

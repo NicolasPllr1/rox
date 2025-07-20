@@ -7,29 +7,26 @@ use crate::parsing::ast::statement::Stmt;
 use crate::runtime::callable::{Callable, LoxCallable};
 use crate::runtime::env::Env;
 
-pub struct Interpreter {
-    pub env: Rc<RefCell<Env>>,
+pub struct Interpreter<'de> {
+    pub env: Rc<RefCell<Env<'de>>>,
 }
 
-impl Default for Interpreter {
-    fn default() -> Self {
-        Interpreter::new()
-    }
-}
-
-impl Interpreter {
-    fn new() -> Interpreter {
+impl<'de> Interpreter<'de> {
+    pub fn new() -> Interpreter<'de> {
         Interpreter {
             env: Rc::new(RefCell::new(Env::default())),
         }
     }
 
-    pub fn evaluate(&mut self, declarations: Vec<Declaration>) {
+    pub fn evaluate(&mut self, declarations: Vec<Declaration<'de>>) {
         for decl in declarations {
             let _val = self.evaluate_decl(&decl);
         }
     }
-    fn evaluate_decl(&mut self, decl: &Declaration) -> Result<LoxValue, EvaluationError> {
+    fn evaluate_decl(
+        &mut self,
+        decl: &Declaration<'de>,
+    ) -> Result<LoxValue<'de>, EvaluationError<'de>> {
         match decl {
             Declaration::StmtDecl { id: _, stmt } => self.evaluate_stmt(stmt),
 
@@ -40,8 +37,8 @@ impl Interpreter {
             } => {
                 let value = initializer
                     .as_ref() // NOTE: study this as_ref, related to options and shared references ?
-                    .map_or(LoxValue::Nil, |expr| self.evaluate_expr(expr));
-                self.env.borrow_mut().define(&name.lexeme, value); // NOTE: borrow_mut vs get_mut
+                    .map_or(LoxValue::Nil, |expr| self.evaluate_expr(&expr));
+                self.env.borrow_mut().define(name.lexeme, value); // NOTE: borrow_mut vs get_mut
                 Ok(LoxValue::Nil)
             }
             Declaration::FuncDecl {
@@ -59,13 +56,16 @@ impl Interpreter {
                 };
                 self.env
                     .borrow_mut()
-                    .define(&name.lexeme, LoxValue::Callable(callable_fn));
+                    .define(name.lexeme, LoxValue::Callable(callable_fn));
                 Ok(LoxValue::Nil)
             }
         }
     }
 
-    pub fn evaluate_stmt(&mut self, stmt: &Stmt) -> Result<LoxValue, EvaluationError> {
+    pub fn evaluate_stmt(
+        &mut self,
+        stmt: &Stmt<'de>,
+    ) -> Result<LoxValue<'de>, EvaluationError<'de>> {
         match stmt {
             Stmt::ExprStmt { id: _, expr } => {
                 let _expr = self.evaluate_expr(expr);
@@ -133,7 +133,7 @@ impl Interpreter {
         }
     }
 
-    pub fn evaluate_expr(&mut self, expr: &Expr) -> LoxValue {
+    pub fn evaluate_expr(&mut self, expr: &Expr<'de>) -> LoxValue<'de> {
         match expr {
             Expr::Literal { id: _, value } => value.clone(),
             Expr::Unary { id: _, op, right } => match op {
@@ -246,7 +246,7 @@ impl Interpreter {
             Expr::Variable { id: _, name } => self.env.borrow().get(&name.lexeme).clone(),
             Expr::Assign { id: _, name, value } => {
                 let final_value = self.evaluate_expr(value);
-                self.env.borrow_mut().assign(name, final_value.clone());
+                self.env.borrow_mut().assign(name, &final_value);
                 final_value
             }
 
@@ -286,7 +286,8 @@ impl Interpreter {
                 LoxValue::Callable(lox_callable) => {
                     let args: Vec<LoxValue> =
                         arguments.iter().map(|p| self.evaluate_expr(p)).collect();
-                    lox_callable.call(self, args)
+                    let value = lox_callable.call(self, args);
+                    value.to_owned()
                 }
                 _ => panic!("expect callee to be callable"),
             },
@@ -295,6 +296,6 @@ impl Interpreter {
 }
 
 #[derive(Debug)]
-pub enum EvaluationError {
-    ReturnValue(LoxValue),
+pub enum EvaluationError<'de> {
+    ReturnValue(LoxValue<'de>),
 }

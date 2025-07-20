@@ -102,11 +102,11 @@ impl fmt::Display for TokenType {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct Token {
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
+pub struct Token<'de> {
     pub token_type: TokenType,
-    pub lexeme: String,
-    pub literal: Option<String>,
+    pub lexeme: &'de str, //  raw substrings from the source code
+    pub literal: Option<&'de str>,
     pub line: usize,
 }
 
@@ -114,17 +114,24 @@ pub struct Token {
 //     return type + " " + lexeme + " " + literal;
 //   }
 // }
-impl fmt::Display for Token {
+impl fmt::Display for Token<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{} {} {}",
-            self.token_type,
-            self.lexeme,
-            self.literal
-                .clone()
-                .unwrap_or(String::from_str("null").unwrap())
-        )
+        let lox_literal = match self.token_type {
+            TokenType::Number => {
+                let original_lexeme = self.lexeme;
+                if original_lexeme.contains('.') {
+                    original_lexeme.to_string()
+                } else {
+                    format!("{original_lexeme}.0") // particularity
+                }
+            }
+            _ => self.literal.map_or(
+                String::from_str("null").expect("expect valid string"),
+                |s| s.to_string(),
+            ),
+        };
+
+        write!(f, "{} {} {}", self.token_type, self.lexeme, lox_literal,)
     }
 }
 
