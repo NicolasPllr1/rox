@@ -1,5 +1,6 @@
 use rox::EvaluationError;
 use rox::Interpreter;
+use rox::Resolver;
 use rox::Scanner;
 use rox::{Parser, ParserError};
 use std::fmt;
@@ -37,8 +38,13 @@ fn run<'de>(source: &'de str) -> Result<(), InterpreterError<'de>> {
         println!("{decl:?}");
     }
 
+    println!("\nResolving");
+    let mut resolver = Resolver::new();
+    resolver.resolve(&declarations);
+    dbg!(&resolver.locals);
+
     println!("\nEvaluation:");
-    let mut interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new(resolver.locals);
     interpreter.evaluate(declarations);
     Ok(())
 }

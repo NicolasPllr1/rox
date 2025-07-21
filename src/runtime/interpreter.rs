@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::parsing::ast::declaration::Declaration;
@@ -9,12 +10,14 @@ use crate::runtime::env::Env;
 
 pub struct Interpreter<'de> {
     pub env: Rc<RefCell<Env<'de>>>,
+    pub locals: HashMap<Expr<'de>, usize>,
 }
 
 impl<'de> Interpreter<'de> {
-    pub fn new() -> Interpreter<'de> {
+    pub fn new(locals: HashMap<Expr<'de>, usize>) -> Interpreter<'de> {
         Interpreter {
             env: Rc::new(RefCell::new(Env::default())),
+            locals,
         }
     }
 
@@ -243,7 +246,13 @@ impl<'de> Interpreter<'de> {
                 }
             },
             Expr::Grouping { id: _, group: expr } => self.evaluate_expr(expr),
-            Expr::Variable { id: _, name } => self.env.borrow().get(&name.lexeme).clone(),
+            Expr::Variable { id: _, name } => {
+                // self.env.borrow().get(&name.lexeme).clone()
+                match self.locals.get(expr) {
+                    Some(d) => self.env.borrow().get_at(d, name.lexeme),
+                    None => panic!("unknown variable: {expr:?}"),
+                }
+            }
             Expr::Assign { id: _, name, value } => {
                 let final_value = self.evaluate_expr(value);
                 self.env.borrow_mut().assign(name, &final_value);

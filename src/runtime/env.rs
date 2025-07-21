@@ -62,6 +62,100 @@ impl<'de> Env<'de> {
             }
         }
     }
+
+    pub fn get_at(&self, distance: &usize, name: &str) -> LoxValue<'de> {
+        // get environement at 'distance' d where 1 distance unit ~ 1 scope
+        // NOTE: could not refactor this out. I had problems with lifetimes,
+        // trying the signature: pub fn get_ancestor(&'de self, distance: &usize) -> Option<&'de Env<'de>>
+
+        // if *distance == 0 {
+        //     return self
+        //         .values
+        //         .get(name)
+        //         .expect("could not find vairable {name} at distance 0")
+        //         .clone();
+        // }
+        //
+        // must go up the chain of enclosing envs
+
+        // let mut d = 0;
+        // let mut ancestor = Rc::clone(self.enclosing.as_ref().expect(&format!(
+        //     "no enclosing environement at distance 1 for {name} "
+        // )));
+        // d = 1;
+        //
+        // while d < *distance {
+        //     // ancestor = match ancestor.borrow().enclosing {
+        //     //     None => panic!(),
+        //     //     Some(env) => env.as_ref().borrow(),
+        //     // };
+        //     //
+        //     d += 1;
+        //     let next = ancestor.borrow();
+        //     // .enclosing
+        //     // .as_ref()
+        //     // .expect("no enclosing environment at distance {d} for {}");
+        //     //
+        //     ancestor = Rc::clone(
+        //         next.enclosing
+        //             .as_ref()
+        //             .expect("no enclosing environment at distance {d} for {}"),
+        //     );
+        // }
+        //
+        // ancestor
+        //     .borrow()
+        //     .values
+        //     .get(name)
+        //     .expect("could not find vairable {name} at distancec {distance}")
+        //     .clone()
+        // direct within current scope
+
+        // I’ve re-written get_at so that:
+        //
+        //     * We always keep an `Rc<RefCell<Env<'de>>>` for the “ancestor” scope, cloning the `Rc` as we walk up.
+        //     * Each borrow of the inner `Env` is confined to its own block (so the temporary `Ref` is dropped before we clone the next `Rc`).
+        //     * We preserve your original signature and error messages (now properly formatted via `format!`).
+        if *distance == 0 {
+            return self
+                .values
+                .get(name)
+                .expect(&format!("could not find variable '{}' at distance 0", name))
+                .clone();
+        }
+        // walk up the chain of enclosing environments
+        let mut env_rc = Rc::clone(self.enclosing.as_ref().expect(&format!(
+            "no enclosing environment at distance 1 for {}",
+            name
+        )));
+        let mut level = 1;
+        while level < *distance {
+            // take borrow to access enclosing
+            let enclosing_ref = {
+                let borrowed = env_rc.borrow();
+                borrowed
+                    .enclosing
+                    .as_ref()
+                    .expect(&format!(
+                        "no enclosing environment at distance {} for {}",
+                        level + 1,
+                        name
+                    ))
+                    .clone()
+            };
+            env_rc = enclosing_ref;
+            level += 1;
+        }
+        // finally, get the name in the found environment
+        let env = env_rc.borrow();
+        env.values
+            .get(name)
+            .expect(&format!(
+                "could not find variable '{}' at distance {}",
+                name, distance
+            ))
+            .clone()
+    }
 }
 
 impl Default for Env<'_> {
