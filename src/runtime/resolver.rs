@@ -38,7 +38,16 @@ impl<'a> Resolver<'a> {
                 self.resolve_stmt(stmt);
             }
 
-            _ => panic!("expect function or statement declaration"),
+            Declaration::VarDecl {
+                id: _,
+                name,
+                initializer,
+            } => {
+                self.declare(name);
+                if let Some(ini_expr) = initializer {
+                    self.resolve_expr(ini_expr);
+                }
+            }
         }
     }
 
@@ -76,9 +85,15 @@ impl<'a> Resolver<'a> {
             }
             Stmt::Block {
                 id: _,
-                declarations: _declarations,
-            } => todo!(),
+                declarations,
+            } => self.resolve_block(&declarations),
         }
+    }
+
+    fn resolve_block(&mut self, declarations: &Vec<Declaration<'a>>) {
+        self.begin_scope();
+        self.resolve(declarations);
+        self.end_scope();
     }
 
     fn resolve_function(&mut self, fn_decl: &Declaration<'a>) {
