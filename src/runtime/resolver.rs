@@ -124,7 +124,7 @@ impl<'a> Resolver<'a> {
                 if let Some(true) = self
                     .scopes
                     .last()
-                    .map(|scope| scope.get(&name.lexeme).map_or(true, |res| *res == false))
+                    .map(|scope| scope.get(&name.lexeme).map_or(false, |res| *res == false))
                 {
                     panic!("Can't read local variable in its own initializer")
                 }
