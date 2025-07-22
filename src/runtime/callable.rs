@@ -30,7 +30,7 @@ impl<'de> Callable<'de> for LoxCallable<'de> {
 
         // binds args value to parameters names in the fn execution env
         let () = zip(self.params.to_vec(), args)
-            .map(|(fn_param, arg_value)| fn_execution_env.define(&fn_param.lexeme, arg_value))
+            .map(|(fn_param, arg_value)| fn_execution_env.define(fn_param.lexeme, arg_value))
             .collect();
 
         // execute the block using the interpreter with the correct env

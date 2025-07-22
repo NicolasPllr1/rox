@@ -26,7 +26,7 @@ impl<'de> Env<'de> {
     }
 
     pub fn set_enclosing_env(&mut self, enclosing: &Rc<RefCell<Env<'de>>>) {
-        self.enclosing = Some(Rc::clone(&enclosing));
+        self.enclosing = Some(Rc::clone(enclosing));
     }
     pub fn define(&mut self, name: &'de str, value: LoxValue<'de>) {
         self.values.insert(name, value);
@@ -120,14 +120,11 @@ impl<'de> Env<'de> {
             return self
                 .values
                 .get(name)
-                .expect(&format!("could not find variable '{}' at distance 0", name))
+                .unwrap_or_else(|| panic!("could not find variable '{name}' at distance 0"))
                 .clone();
         }
         // walk up the chain of enclosing environments
-        let mut env_rc = Rc::clone(self.enclosing.as_ref().expect(&format!(
-            "no enclosing environment at distance 1 for {}",
-            name
-        )));
+        let mut env_rc = Rc::clone(self.enclosing.as_ref().unwrap_or_else(|| panic!("no enclosing environment at distance 1 for {name}")));
         let mut level = 1;
         while level < *distance {
             // take borrow to access enclosing
@@ -136,11 +133,8 @@ impl<'de> Env<'de> {
                 borrowed
                     .enclosing
                     .as_ref()
-                    .expect(&format!(
-                        "no enclosing environment at distance {} for {}",
-                        level + 1,
-                        name
-                    ))
+                    .unwrap_or_else(|| panic!("no enclosing environment at distance {} for {name}",
+                        level + 1))
                     .clone()
             };
             env_rc = enclosing_ref;
@@ -150,10 +144,7 @@ impl<'de> Env<'de> {
         let env = env_rc.borrow();
         env.values
             .get(name)
-            .expect(&format!(
-                "could not find variable '{}' at distance {}",
-                name, distance
-            ))
+            .unwrap_or_else(|| panic!("could not find variable '{name}' at distance {distance}"))
             .clone()
     }
 
@@ -163,10 +154,7 @@ impl<'de> Env<'de> {
         }
 
         // walk up the chain of enclosing environments
-        let mut env_rc = Rc::clone(self.enclosing.as_ref().expect(&format!(
-            "no enclosing environment at distance 1 for {}",
-            name
-        )));
+        let mut env_rc = Rc::clone(self.enclosing.as_ref().unwrap_or_else(|| panic!("no enclosing environment at distance 1 for {name}")));
         let mut level = 1;
         while level < *distance {
             // take borrow to access enclosing
@@ -175,11 +163,9 @@ impl<'de> Env<'de> {
                 borrowed
                     .enclosing
                     .as_ref()
-                    .expect(&format!(
-                        "no enclosing environment at distance {} for {}",
+                    .unwrap_or_else(|| panic!("no enclosing environment at distance {} for {}",
                         level + 1,
-                        name
-                    ))
+                        name))
                     .clone()
             };
             env_rc = enclosing_ref;

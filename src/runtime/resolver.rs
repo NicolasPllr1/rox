@@ -2,23 +2,17 @@ use std::collections::HashMap;
 
 use crate::{Declaration, Expr, Stmt, Token};
 
+#[derive(Debug, Default)]
 pub struct Resolver<'a> {
     pub scopes: Vec<HashMap<&'a str, bool>>, // stack of current scopes
     pub locals: HashMap<Expr<'a>, usize>,
 }
 
 impl<'a> Resolver<'a> {
-    pub fn new() -> Resolver<'a> {
-        Resolver {
-            scopes: Vec::new(),
-            locals: HashMap::new(),
-        }
-    }
-
     pub fn resolve(&mut self, declarations: &Vec<Declaration<'a>>) {
         self.begin_scope();
         for decl in declarations {
-            let _ = self.resolve_decl(&decl);
+            self.resolve_decl(decl);
         }
         self.end_scope();
     }
@@ -89,7 +83,7 @@ impl<'a> Resolver<'a> {
             Stmt::Block {
                 id: _,
                 declarations,
-            } => self.resolve_block(&declarations),
+            } => self.resolve_block(declarations),
         }
     }
 
@@ -109,8 +103,8 @@ impl<'a> Resolver<'a> {
             } => {
                 self.begin_scope();
                 for tok in params {
-                    self.declare(&tok);
-                    self.define(&tok);
+                    self.declare(tok);
+                    self.define(tok);
                 }
 
                 self.resolve_stmt(body);
@@ -127,7 +121,9 @@ impl<'a> Resolver<'a> {
                 if let Some(true) = self
                     .scopes
                     .last()
-                    .map(|scope| scope.get(&name.lexeme).map_or(false, |res| *res == false))
+                    // check that the variable is declared but not resolved yet (i.e., found in
+                    // the hashmap but associated to 'false')
+                    .map(|scope| scope.get(&name.lexeme).is_some_and(|res| !(*res)))
                 {
                     panic!("Can't read local variable in its own initializer")
                 }
@@ -200,7 +196,7 @@ impl<'a> Resolver<'a> {
                 self.scopes
                     .get_mut(nb_scopes - 1) // last scope
                     .expect("expect at least one scope")
-                    .insert(var_token.clone().lexeme, false);
+                    .insert(var_token.lexeme, false);
             }
         }
     }
@@ -211,7 +207,7 @@ impl<'a> Resolver<'a> {
                 self.scopes
                     .get_mut(nb_scopes - 1) // last scope
                     .expect("expect at least one scope")
-                    .insert(var_token.clone().lexeme, true);
+                    .insert(var_token.lexeme, true);
             }
         }
     }

@@ -17,6 +17,11 @@ pub struct ParserError<'de> {
 pub struct Parser {
     current_node_id: usize,
 }
+impl Default for Parser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl Parser {
     pub fn new() -> Parser {
@@ -199,7 +204,7 @@ impl Parser {
             }
             Some(&not_semicolon) => Err(ParserError {
                 msg: "variable declaration expects to end with a semicolon".to_owned(),
-                tok: Some(not_semicolon.clone()),
+                tok: Some(*not_semicolon),
             }),
             None => Err(ParserError {
                 msg: "variable declaration expects to end with a semicolon, but got none"
@@ -219,7 +224,7 @@ impl Parser {
         match tokens.peek() {
             Some(&next_tok) if next_tok.token_type == nxt_expected_type => {
                 tokens.next(); // consume the token
-                Some(next_tok.clone()) // NOTE: remove this clone ?
+                Some(*next_tok) // NOTE: remove this clone ?
             }
             _ => None,
         }
@@ -240,7 +245,7 @@ impl Parser {
                     }),
                     None => Err(ParserError {
                         msg: "print statement expects to end with a semicolon".to_owned(),
-                        tok: tokens.next().cloned(),
+                        tok: tokens.next().copied(),
                     }),
                 }
             }
@@ -255,7 +260,7 @@ impl Parser {
                     }),
                     None => Err(ParserError {
                         msg: "block statement expects to end with a right brace".to_owned(),
-                        tok: tokens.next().cloned(),
+                        tok: tokens.next().copied(),
                     }),
                 }
             }
@@ -318,7 +323,7 @@ impl Parser {
             }
             Some(&tok) => Err(ParserError {
                 msg: "expression statement expects semicolon at the end".into(),
-                tok: Some(tok.clone()),
+                tok: Some(*tok),
             }),
             _ => panic!("expression statement expect semicolon at the end, got no token at all"),
         }
@@ -334,7 +339,7 @@ impl Parser {
             Some(&tok) if tok.token_type == TokenType::Semicolon => Ok(expr),
             Some(&tok) => Err(ParserError {
                 msg: "print statement expects semicolon at the end".into(),
-                tok: Some(tok.clone()),
+                tok: Some(*tok),
             }),
             _ => panic!("print statement expect semicolon at the end, got no token at all"),
         }
@@ -375,7 +380,7 @@ impl Parser {
             }
             Some(&tok) => Err(ParserError {
                 msg: "Expects left parenthesis after 'if' keyword".to_owned(),
-                tok: Some(tok.clone()),
+                tok: Some(*tok),
             }),
             None => Err(ParserError {
                 msg: "Expects left parenthesis after 'if' keyword, got none".to_owned(),
@@ -412,7 +417,7 @@ impl Parser {
             }
             Some(&tok) => Err(ParserError {
                 msg: "Expects left parenthesis after 'if' keyword".to_owned(),
-                tok: Some(tok.clone()),
+                tok: Some(*tok),
             }),
             None => Err(ParserError {
                 msg: "Expects left parenthesis after 'if' keyword, got none".to_owned(),
@@ -428,7 +433,7 @@ impl Parser {
         if Parser::match_next_token_type(tokens, TokenType::LeftParen).is_none() {
             return Err(ParserError {
                 msg: "expects a '(' after the 'for' keyword".to_owned(),
-                tok: tokens.next().cloned(),
+                tok: tokens.next().copied(),
             });
         };
 
@@ -460,7 +465,7 @@ impl Parser {
                 } else {
                     return Err(ParserError {
                         msg: "Expects semicolon after the for loop condition".to_owned(),
-                        tok: tokens.next().cloned(),
+                        tok: tokens.next().copied(),
                     });
                 }
             }
@@ -477,7 +482,7 @@ impl Parser {
                     .ok_or_else(|| ParserError {
                         msg: "Expects right parenthesis at the end of the for loop initialization"
                             .to_owned(),
-                        tok: tokens.next().cloned(),
+                        tok: tokens.next().copied(),
                     })?
 
                 // if Parser::match_next_token_type(tokens, TokenType::RightParen).is_some() {
@@ -486,7 +491,7 @@ impl Parser {
                 //     return Err(ParserError {
                 //         msg: "Expects right parenthesis at the end of the for loop initialization"
                 //             .to_owned(),
-                //         tok: tokens.next().cloned(),
+                //         tok: tokens.next().copied(),
                 //     });
                 // }
             }
@@ -554,7 +559,7 @@ impl Parser {
                     .map(|_| Some(return_expr))
                     .ok_or_else(|| ParserError {
                         msg: "Expects semicolon after return statement".to_owned(),
-                        tok: tokens.next().cloned(),
+                        tok: tokens.next().copied(),
                     })?
             }
         };
@@ -591,7 +596,7 @@ impl Parser {
                 } else {
                     Err(ParserError {
                         msg: "Invalid assignement target".to_owned(),
-                        tok: Some(tok_equal.clone()),
+                        tok: Some(*tok_equal),
                     })
                 }
             }
@@ -829,7 +834,6 @@ impl Parser {
                     id: self.new_id(),
                     value: LoxValue::Number(
                         tok.literal
-                            .clone()
                             .expect("Number token should have a literal")
                             .parse()
                             .expect("Number token should parse to a f32"),
@@ -837,9 +841,7 @@ impl Parser {
                 }),
                 TokenType::String => Ok(Expr::Literal {
                     id: self.new_id(),
-                    value: LoxValue::String(
-                        tok.literal.clone().expect("String should have literal"),
-                    ),
+                    value: LoxValue::String(tok.literal.expect("String should have literal")),
                 }),
                 TokenType::True => Ok(Expr::Literal {
                     id: self.new_id(),
@@ -868,11 +870,11 @@ impl Parser {
                 }
                 TokenType::Identifier => Ok(Expr::Variable {
                     id: self.new_id(),
-                    name: tok.clone(),
+                    name: *tok,
                 }),
                 _ => Err(ParserError {
                     msg: "Expect expression".into(),
-                    tok: Some(tok.clone()), // NOTE: after cloning, no need to dereference with *, why?
+                    tok: Some(*tok), // NOTE: after cloning, no need to dereference with *, why?
                 }),
             }
         } else {
@@ -950,7 +952,7 @@ mod tests {
             },
         ]);
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::default();
 
         let ast = parser.parse(tokens).expect("expects parsing not to fail");
 

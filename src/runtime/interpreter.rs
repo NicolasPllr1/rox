@@ -40,7 +40,7 @@ impl<'de> Interpreter<'de> {
             } => {
                 let value = initializer
                     .as_ref() // NOTE: study this as_ref, related to options and shared references ?
-                    .map_or(LoxValue::Nil, |expr| self.evaluate_expr(&expr));
+                    .map_or(LoxValue::Nil, |expr| self.evaluate_expr(expr));
                 self.env.borrow_mut().define(name.lexeme, value); // NOTE: borrow_mut vs get_mut
                 Ok(LoxValue::Nil)
             }
@@ -103,7 +103,7 @@ impl<'de> Interpreter<'de> {
                 then_branch,
                 else_branch,
             } => match self.evaluate_expr(condition) {
-                LoxValue::Bool(true) => self.evaluate_stmt(&then_branch),
+                LoxValue::Bool(true) => self.evaluate_stmt(then_branch),
                 LoxValue::Bool(false) => {
                     if let Some(stmt) = else_branch {
                         self.evaluate_stmt(stmt)

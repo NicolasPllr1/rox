@@ -16,12 +16,12 @@ fn main() {
             eprintln!("I/O error: {e}");
             std::process::exit(1);
         });
-        let _ = run(&source).unwrap_or_else(|e| {
+        run(&source).unwrap_or_else(|e| {
             eprintln!("Error: {e}");
             std::process::exit(1);
         });
     } else {
-        let _ = run_prompt().unwrap();
+        run_prompt().unwrap();
     }
 }
 
@@ -39,7 +39,7 @@ fn run<'de>(source: &'de str) -> Result<(), InterpreterError<'de>> {
     }
 
     println!("\nResolving:");
-    let mut resolver = Resolver::new();
+    let mut resolver = Resolver::default();
     resolver.resolve(&declarations);
     dbg!(&resolver.locals);
 
