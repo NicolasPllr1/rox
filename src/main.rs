@@ -25,7 +25,7 @@ fn main() {
     }
 }
 
-fn run<'de>(source: &'de str) -> Result<(), InterpreterError<'de>> {
+fn run(source: &str) -> Result<(), InterpreterError<'_>> {
     println!("Scanning/Lexing:");
     let scanner = Scanner::scan_tokens(source);
     let tokens = scanner.tokens;
@@ -33,7 +33,7 @@ fn run<'de>(source: &'de str) -> Result<(), InterpreterError<'de>> {
 
     println!("\nParsing:");
     let mut parser = Parser::new();
-    let declarations = parser.parse(tokens)?;
+    let declarations = parser.parse(&tokens)?;
     for decl in &declarations {
         println!("{decl:?}");
     }

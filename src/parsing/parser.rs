@@ -34,7 +34,7 @@ impl Parser {
 
     pub fn parse<'de>(
         &mut self,
-        tokens: Vec<Token<'de>>,
+        tokens: &[Token<'de>],
     ) -> Result<Vec<Declaration<'de>>, ParserError<'de>> {
         let mut tokens = tokens.iter().peekable();
         let mut declarations = Vec::new();
@@ -85,7 +85,7 @@ impl Parser {
             Parser::match_next_token_type(tokens, TokenType::Identifier).ok_or_else(|| {
                 ParserError {
                     msg: "expects identifier after 'fun' for the function name".to_owned(),
-                    tok: tokens.next().cloned(), // ok_or_else to avoid calling .next() in the Ok
+                    tok: tokens.next().copied(), // ok_or_else to avoid calling .next() in the Ok
                                                  // case
                 }
             })?;
@@ -94,7 +94,7 @@ impl Parser {
         let _ = Parser::match_next_token_type(tokens, TokenType::LeftParen).ok_or_else(|| {
             ParserError {
                 msg: "expects '(' after function name".to_owned(),
-                tok: tokens.next().cloned(),
+                tok: tokens.next().copied(),
             }
         })?;
 
@@ -106,7 +106,7 @@ impl Parser {
                 let p = Parser::match_next_token_type(tokens, TokenType::Identifier).ok_or_else(
                     || ParserError {
                         msg: "expects parameter name".to_owned(),
-                        tok: tokens.next().cloned(),
+                        tok: tokens.next().copied(),
                     },
                 )?;
                 params.push(p);
@@ -117,13 +117,13 @@ impl Parser {
                         let p = Parser::match_next_token_type(tokens, TokenType::Identifier)
                             .ok_or_else(|| ParserError {
                                 msg: "expects parameter name".to_owned(),
-                                tok: tokens.next().cloned(),
+                                tok: tokens.next().copied(),
                             })?;
                         params.push(p);
                     } else {
                         return Err(ParserError {
                             msg: "Can't have more than 255 arguments".to_owned(),
-                            tok: tokens.next().cloned(), // NOTE: the use of cloned()
+                            tok: tokens.next().copied(), // NOTE: the use of cloned()
                         });
                     }
                 }
@@ -135,7 +135,7 @@ impl Parser {
         let _ = Parser::match_next_token_type(tokens, TokenType::RightParen).ok_or_else(|| {
             ParserError {
                 msg: "function declaration expects ')' after parameters".to_owned(),
-                tok: tokens.next().cloned(),
+                tok: tokens.next().copied(),
             }
         })?;
 
@@ -145,7 +145,7 @@ impl Parser {
         let _ = Parser::match_next_token_type(tokens, TokenType::LeftBrace).ok_or_else(|| {
             ParserError {
                 msg: "expects '{' before function body".to_owned(),
-                tok: tokens.next().cloned(),
+                tok: tokens.next().copied(),
             }
         })?;
 
@@ -158,7 +158,7 @@ impl Parser {
         let _ = Parser::match_next_token_type(tokens, TokenType::RightBrace).ok_or_else(|| {
             ParserError {
                 msg: "expects '}' after function body".to_owned(),
-                tok: tokens.next().cloned(),
+                tok: tokens.next().copied(),
             }
         })?;
 
@@ -303,9 +303,8 @@ impl Parser {
         while let Some(tok) = tokens.peek() {
             if tok.token_type == TokenType::RightBrace {
                 break;
-            } else {
-                stmts.push(self.declaration(tokens)?);
             }
+            stmts.push(self.declaration(tokens)?);
         }
         Ok(stmts)
     }
@@ -435,7 +434,7 @@ impl Parser {
                 msg: "expects a '(' after the 'for' keyword".to_owned(),
                 tok: tokens.next().copied(),
             });
-        };
+        }
 
         // parse initializer
         let initializer = match tokens.peek() {
@@ -518,7 +517,7 @@ impl Parser {
                 ]
                 .into(),
             };
-        };
+        }
 
         body = Stmt::WhileStmt {
             id: self.new_id(),
@@ -538,7 +537,7 @@ impl Parser {
                 ]
                 .into(),
             };
-        };
+        }
 
         Ok(body)
     }
@@ -660,7 +659,7 @@ impl Parser {
                     };
                 }
                 _ => break,
-            };
+            }
         }
 
         Ok(expr)
@@ -694,7 +693,7 @@ impl Parser {
                     };
                 }
                 _ => break,
-            };
+            }
         }
 
         Ok(expr)
@@ -721,7 +720,7 @@ impl Parser {
                     };
                 }
                 _ => break,
-            };
+            }
         }
 
         Ok(expr)
@@ -745,10 +744,10 @@ impl Parser {
                         left,
                         op,
                         right,
-                    };
+                    }
                 }
                 _ => break,
-            };
+            }
         }
 
         Ok(expr)
@@ -796,7 +795,7 @@ impl Parser {
                         } else {
                             return Err(ParserError {
                                 msg: "Can't have more than 255 arguments".to_owned(),
-                                tok: tokens.next().cloned(), // NOTE: the use of cloned()
+                                tok: tokens.next().copied(), // NOTE: the use of cloned()
                             });
                         }
                     }
@@ -815,7 +814,7 @@ impl Parser {
                 None => {
                     return Err(ParserError {
                         msg: "function call expects ')' after arguments".to_owned(),
-                        tok: tokens.next().cloned(),
+                        tok: tokens.next().copied(),
                     })
                 }
             }
@@ -862,7 +861,7 @@ impl Parser {
                         Some(&tok) if tok.token_type == TokenType::RightParen => (),
                         // Some(&tok) if tok.token_type == TokenType::RightParen => tokens.next(), // consume right parenthesis
                         _ => panic!("Expect right parenthesis after expression. Got {tok}"),
-                    };
+                    }
                     Ok(Expr::Grouping {
                         id: self.new_id(),
                         group: Box::new(expr),

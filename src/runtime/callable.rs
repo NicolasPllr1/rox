@@ -20,9 +20,10 @@ impl<'de> Callable<'de> for LoxCallable<'de> {
         self.params.len()
     }
     fn call(&self, interpreter: &mut Interpreter<'de>, args: Vec<LoxValue<'de>>) -> LoxValue<'de> {
-        if args.len() != self.arity() {
-            panic!("Wrong number of arguments passed")
-        }
+        assert!(
+            args.len() == self.arity(),
+            "Wrong number of arguments passed"
+        );
 
         // New env for the fn execution, associate args with params
         let original_env = Rc::clone(&interpreter.env);

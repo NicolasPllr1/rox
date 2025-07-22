@@ -9,7 +9,7 @@ pub struct Resolver<'a> {
 }
 
 impl<'a> Resolver<'a> {
-    pub fn resolve(&mut self, declarations: &Vec<Declaration<'a>>) {
+    pub fn resolve(&mut self, declarations: &[Declaration<'a>]) {
         self.begin_scope();
         for decl in declarations {
             self.resolve_decl(decl);
@@ -77,7 +77,7 @@ impl<'a> Resolver<'a> {
                 self.resolve_expr(condition);
                 self.resolve_stmt(then_branch);
                 if let Some(else_branch_stmt) = else_branch {
-                    self.resolve_stmt(else_branch_stmt)
+                    self.resolve_stmt(else_branch_stmt);
                 }
             }
             Stmt::Block {
@@ -87,7 +87,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn resolve_block(&mut self, declarations: &Vec<Declaration<'a>>) {
+    fn resolve_block(&mut self, declarations: &[Declaration<'a>]) {
         // self.begin_scope();
         self.resolve(declarations);
         // self.end_scope();
@@ -183,7 +183,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn begin_scope(&mut self) {
-        self.scopes.push(HashMap::new())
+        self.scopes.push(HashMap::new());
     }
     fn end_scope(&mut self) {
         self.scopes.pop(); // NOTE: should we err here if scopes is empty?

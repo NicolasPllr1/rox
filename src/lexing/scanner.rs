@@ -16,7 +16,7 @@ enum ScannerError {
 }
 
 impl Scanner<'_> {
-    pub fn scan_tokens<'de>(source: &'de str) -> Scanner<'de> {
+    pub fn scan_tokens(source: &str) -> Scanner<'_> {
         let mut tokens: Vec<Token> = Vec::new();
         let mut errors = Vec::new();
 
@@ -107,17 +107,14 @@ impl Scanner<'_> {
                     }
 
                     // check and consume the end quotation mark
-                    match chars.peek() {
-                        Some((_, c)) => {
-                            assert!(*c == '"'); // check
-                            chars.next(); // consume
-                            current_idx += 1;
-                            TokenType::String
-                        }
-                        None => {
-                            errors.push(ScannerError::UnterminatedString(line));
-                            continue;
-                        }
+                    if let Some((_, c)) = chars.peek() {
+                        assert!(*c == '"'); // check
+                        chars.next(); // consume
+                        current_idx += 1;
+                        TokenType::String
+                    } else {
+                        errors.push(ScannerError::UnterminatedString(line));
+                        continue;
                     }
                 }
                 d if d.is_ascii_digit() => {
@@ -156,7 +153,7 @@ impl Scanner<'_> {
             };
 
             let lexeme = match token_type {
-                TokenType::String => &source[start..current_idx + 1], // include quotations marks
+                TokenType::String => &source[start..=current_idx], // include quotations marks
                 // for the lexeme
                 // string literal
                 TokenType::Number => {
@@ -164,7 +161,7 @@ impl Scanner<'_> {
                     if tokens.len() >= 2
                         && tokens[tokens.len() - 1].token_type == TokenType::Dot
                         && tokens[tokens.len() - 2].token_type == TokenType::Number
-                        && !tokens[tokens.len() - 2].lexeme.contains(".")
+                        && !tokens[tokens.len() - 2].lexeme.contains('.')
                     // don't want
                     // last number to already be integer.decimal
                     {
@@ -182,20 +179,20 @@ impl Scanner<'_> {
 
                         // assert!(start_idx >= 0, "start index for lexeme should be >= 0");
                         // grab two parts and the dot separating them: '{integer part}.{decimal part}''
-                        &source[start_idx..current_idx + 1]
+                        &source[start_idx..=current_idx]
                     } else {
-                        &source[start..current_idx + 1]
+                        &source[start..=current_idx]
                     }
                 }
                 TokenType::Identifier => {
-                    let lexeme = &source[start..current_idx + 1];
+                    let lexeme = &source[start..=current_idx];
                     // maximal munch: literal or reserved keywords ?
                     token_type = *str_to_keywords
                         .get(lexeme)
                         .unwrap_or(&TokenType::Identifier);
                     lexeme
                 }
-                _ => &source[start..current_idx + 1],
+                _ => &source[start..=current_idx],
             };
 
             let literal = match token_type {

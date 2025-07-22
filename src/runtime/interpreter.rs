@@ -53,7 +53,7 @@ impl<'de> Interpreter<'de> {
                 // register function in the environement as a callable
                 let callable_fn = LoxCallable {
                     function_body: Box::new(body.clone()), // NOTE: clean this cloning mess
-                    params: Box::new(params.to_vec()),
+                    params: Box::new(params.clone()),
                     closure: Rc::clone(&self.env), // capture the current environament at
                                                    // declaration-time
                 };
@@ -296,7 +296,7 @@ impl<'de> Interpreter<'de> {
                     let args: Vec<LoxValue> =
                         arguments.iter().map(|p| self.evaluate_expr(p)).collect();
                     let value = lox_callable.call(self, args);
-                    value.to_owned()
+                    value.clone()
                 }
                 _ => panic!("expect callee to be callable"),
             },
