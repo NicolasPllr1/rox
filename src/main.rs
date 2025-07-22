@@ -38,7 +38,7 @@ fn run<'de>(source: &'de str) -> Result<(), InterpreterError<'de>> {
         println!("{decl:?}");
     }
 
-    println!("\nResolving");
+    println!("\nResolving:");
     let mut resolver = Resolver::new();
     resolver.resolve(&declarations);
     dbg!(&resolver.locals);
