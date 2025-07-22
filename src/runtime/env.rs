@@ -156,6 +156,39 @@ impl<'de> Env<'de> {
             ))
             .clone()
     }
+
+    pub fn assign_at(&mut self, distance: &usize, name: &Token<'de>, value: &LoxValue<'de>) {
+        if *distance == 0 {
+            self.values.insert(name.lexeme, value.clone());
+        }
+
+        // walk up the chain of enclosing environments
+        let mut env_rc = Rc::clone(self.enclosing.as_ref().expect(&format!(
+            "no enclosing environment at distance 1 for {}",
+            name
+        )));
+        let mut level = 1;
+        while level < *distance {
+            // take borrow to access enclosing
+            let enclosing_ref = {
+                let borrowed = env_rc.borrow();
+                borrowed
+                    .enclosing
+                    .as_ref()
+                    .expect(&format!(
+                        "no enclosing environment at distance {} for {}",
+                        level + 1,
+                        name
+                    ))
+                    .clone()
+            };
+            env_rc = enclosing_ref;
+            level += 1;
+        }
+        // finally, get the name in the found environment
+        let mut env = env_rc.borrow_mut();
+        env.values.insert(name.lexeme, value.clone());
+    }
 }
 
 impl Default for Env<'_> {

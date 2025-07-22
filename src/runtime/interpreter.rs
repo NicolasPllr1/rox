@@ -246,16 +246,16 @@ impl<'de> Interpreter<'de> {
                 }
             },
             Expr::Grouping { id: _, group: expr } => self.evaluate_expr(expr),
-            Expr::Variable { id: _, name } => {
-                // self.env.borrow().get(&name.lexeme).clone()
-                match self.locals.get(expr) {
-                    Some(d) => self.env.borrow().get_at(d, name.lexeme),
-                    None => panic!("unknown variable: {expr:?}"),
-                }
-            }
+            Expr::Variable { id: _, name } => match self.locals.get(expr) {
+                Some(d) => self.env.borrow().get_at(d, name.lexeme),
+                None => panic!("unknown variable: {expr:?}"),
+            },
             Expr::Assign { id: _, name, value } => {
                 let final_value = self.evaluate_expr(value);
-                self.env.borrow_mut().assign(name, &final_value);
+                match self.locals.get(expr) {
+                    Some(d) => self.env.borrow_mut().assign_at(d, name, &final_value),
+                    None => panic!("Cound not find {expr:?} in resolved local variables"),
+                }
                 final_value
             }
 

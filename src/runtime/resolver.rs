@@ -16,9 +16,11 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn resolve(&mut self, declarations: &Vec<Declaration<'a>>) {
+        self.begin_scope();
         for decl in declarations {
             let _ = self.resolve_decl(&decl);
         }
+        self.end_scope();
     }
 
     fn resolve_decl(&mut self, decl: &Declaration<'a>) {
@@ -47,6 +49,7 @@ impl<'a> Resolver<'a> {
                 if let Some(ini_expr) = initializer {
                     self.resolve_expr(ini_expr);
                 }
+                self.define(name);
             }
         }
     }
@@ -91,9 +94,9 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_block(&mut self, declarations: &Vec<Declaration<'a>>) {
-        self.begin_scope();
+        // self.begin_scope();
         self.resolve(declarations);
-        self.end_scope();
+        // self.end_scope();
     }
 
     fn resolve_function(&mut self, fn_decl: &Declaration<'a>) {
@@ -176,7 +179,8 @@ impl<'a> Resolver<'a> {
     fn resolve_local(&mut self, expr: &Expr<'a>, var_tok: &Token) {
         for (i, scope) in self.scopes.iter().enumerate().rev() {
             if scope.contains_key(&var_tok.lexeme) {
-                self.locals.insert(expr.clone(), self.scopes.len() - 1 - i);
+                let d = self.scopes.len() - 1 - i;
+                self.locals.insert(expr.clone(), d);
                 return;
             }
         }
@@ -195,7 +199,7 @@ impl<'a> Resolver<'a> {
             nb_scopes => {
                 self.scopes
                     .get_mut(nb_scopes - 1) // last scope
-                    .expect("non empty scopes")
+                    .expect("expect at least one scope")
                     .insert(var_token.clone().lexeme, false);
             }
         }
@@ -206,7 +210,7 @@ impl<'a> Resolver<'a> {
             nb_scopes => {
                 self.scopes
                     .get_mut(nb_scopes - 1) // last scope
-                    .expect("non empty scopes")
+                    .expect("expect at least one scope")
                     .insert(var_token.clone().lexeme, true);
             }
         }
