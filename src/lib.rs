@@ -11,8 +11,7 @@ pub use parsing::ast::statement::Stmt;
 
 pub use parsing::parser::{Parser, ParserError};
 
-pub use runtime::callable::LoxCallable;
+pub use runtime::callable::{LoxCallable, LoxClass};
 pub use runtime::env::Env;
 pub use runtime::interpreter::{EvaluationError, Interpreter};
 pub use runtime::resolver::Resolver;
-

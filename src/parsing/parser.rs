@@ -65,6 +65,10 @@ impl Parser {
                 tokens.next();
                 self.func_decl(tokens)
             }
+            Some(&tok) if tok.token_type == TokenType::Class => {
+                tokens.next();
+                self.class_decl(tokens)
+            }
             Some(_) => Ok(Declaration::StmtDecl {
                 id: self.new_id(),
                 stmt: self.statement(tokens)?,
@@ -74,6 +78,34 @@ impl Parser {
                 tok: None,
             }),
         }
+    }
+
+    fn class_decl<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Declaration<'de>, ParserError<'de>> {
+        let name = *tokens.next().expect("class should have a name, got None");
+
+        // check for opening '{'
+        let _ = Parser::match_next_token_type(tokens, TokenType::LeftBrace).ok_or_else(|| {
+            ParserError {
+                msg: "expects '{' after class name".to_owned(),
+                tok: tokens.next().copied(),
+            }
+        })?;
+
+        let mut methods = Vec::new();
+        while tokens.peek().is_some()
+            & Parser::match_next_token_type(tokens, TokenType::RightBrace).is_none()
+        {
+            methods.push(Box::new(self.func_decl(tokens)?));
+        }
+
+        Ok(Declaration::ClassDecl {
+            id: self.new_id(),
+            name,
+            methods,
+        })
     }
 
     fn func_decl<'de>(
@@ -953,7 +985,7 @@ mod tests {
 
         let mut parser = Parser::default();
 
-        let ast = parser.parse(tokens).expect("expects parsing not to fail");
+        let ast = parser.parse(&tokens).expect("expects parsing not to fail");
 
         let gt_fn_call_ast: Declaration = Declaration::StmtDecl {
             id: 1,

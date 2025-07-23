@@ -21,6 +21,11 @@ pub enum Declaration<'de> {
         params: Vec<Token<'de>>,
         body: Stmt<'de>, // should be Stmt::Block
     },
+    ClassDecl {
+        id: usize,
+        name: Token<'de>,
+        methods: Vec<Box<Declaration<'de>>>, // vec of Declaration::FuncDecl
+    },
 }
 
 impl Declaration<'_> {
@@ -37,6 +42,11 @@ impl Declaration<'_> {
                 name: _,
                 params: _,
                 body: _,
+            } => *id,
+            Declaration::ClassDecl {
+                id,
+                name: _,
+                methods: _,
             } => *id,
         }
     }

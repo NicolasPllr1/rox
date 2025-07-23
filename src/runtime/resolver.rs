@@ -51,6 +51,14 @@ impl<'a> Resolver<'a> {
                 }
                 self.define(name);
             }
+            Declaration::ClassDecl {
+                id: _,
+                name,
+                methods: _,
+            } => {
+                self.declare(name);
+                self.define(name);
+            }
         }
     }
 

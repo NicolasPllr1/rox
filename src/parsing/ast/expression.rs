@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 
 use crate::lexing::token::{Token, TokenType};
-use crate::runtime::callable::LoxCallable;
+use crate::runtime::callable::{LoxCallable, LoxClass};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum LoxValue<'de> {
@@ -10,6 +10,7 @@ pub enum LoxValue<'de> {
     Number(f32),
     String(&'de str),
     Callable(LoxCallable<'de>),
+    Class(LoxClass<'de>),
 }
 
 #[derive(Debug, Clone)]

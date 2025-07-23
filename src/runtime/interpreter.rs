@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::parsing::ast::declaration::Declaration;
 use crate::parsing::ast::expression::{BinaryOp, Expr, LogicOp, LoxValue, UnaryOp};
 use crate::parsing::ast::statement::Stmt;
-use crate::runtime::callable::{Callable, LoxCallable};
+use crate::runtime::callable::{Callable, LoxCallable, LoxClass};
 use crate::runtime::env::Env;
 
 pub struct Interpreter<'de> {
@@ -60,6 +60,17 @@ impl<'de> Interpreter<'de> {
                 self.env
                     .borrow_mut()
                     .define(name.lexeme, LoxValue::Callable(callable_fn));
+                Ok(LoxValue::Nil)
+            }
+            Declaration::ClassDecl {
+                id: _,
+                name,
+                methods: _,
+            } => {
+                self.env.borrow_mut().define(name.lexeme, LoxValue::Nil);
+                let class = LoxClass { name: name.lexeme };
+                let class_value = LoxValue::Class(class);
+                self.env.borrow_mut().assign(name, &class_value);
                 Ok(LoxValue::Nil)
             }
         }

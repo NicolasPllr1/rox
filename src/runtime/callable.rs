@@ -47,3 +47,8 @@ impl<'de> Callable<'de> for LoxCallable<'de> {
         final_value
     }
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LoxClass<'de> {
+    pub name: &'de str,
+}

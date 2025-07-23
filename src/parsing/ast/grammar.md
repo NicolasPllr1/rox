@@ -1,10 +1,11 @@
-Lox grammar, from lowest to highest precedence priority:
+# Lox grammar (from lowest to highest precedence priority)
 
 program -> declaration* EOF ;
 
-declaration -> funcDecl | varDecl | statement;
+declaration -> classDecl | funcDecl | varDecl | statement;
 
-funcDecl -> "fun" function ;
+classDecl -> "class" + IDENTIFIER + "{" + function* + "}"
+uncDecl -> "fun" function ;
 varDecl -> "var" + IDENTIFIER ( "=" expression )? ";" ;
 statement -> exprStmt | IfStmt | printstmt | whileStmt | block | returnStmt ;
 
