@@ -6,6 +6,12 @@ use crate::{Declaration, Expr, Stmt, Token};
 pub struct Resolver<'a> {
     pub scopes: Vec<HashMap<&'a str, bool>>, // stack of current scopes
     pub locals: HashMap<Expr<'a>, usize>,
+    pub current_fn: Option<FnKind>,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum FnKind {
+    Function,
 }
 
 impl<'a> Resolver<'a> {
@@ -56,6 +62,11 @@ impl<'a> Resolver<'a> {
                 id: _,
                 expr: maybe_return_expr,
             } => {
+                assert!(
+                    self.current_fn.is_some(),
+                    "return statements can only be used from within functions",
+                );
+
                 if let Some(return_expr) = maybe_return_expr {
                     self.resolve_expr(return_expr);
                 }
@@ -101,6 +112,11 @@ impl<'a> Resolver<'a> {
                 params,
                 body,
             } => {
+                let previous_fn_kind = self.current_fn;
+                // update fn kind
+                self.current_fn = Some(FnKind::Function);
+
+                // resolve fn
                 self.begin_scope();
                 for tok in params {
                     self.declare(tok);
@@ -110,6 +126,9 @@ impl<'a> Resolver<'a> {
                 self.resolve_stmt(body);
 
                 self.end_scope();
+
+                // restore fn kind
+                self.current_fn = previous_fn_kind;
             }
             _ => panic!("expect function declaration"),
         }
