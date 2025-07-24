@@ -6,4 +6,6 @@ class DevonshireCream {
 
 print DevonshireCream;
 
-DevonshireCream.hello;
+DevonshireCream.hello = "hello world";
+
+print DevonshireCream.hello;

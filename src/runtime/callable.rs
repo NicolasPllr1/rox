@@ -60,4 +60,8 @@ impl<'de> LoxClass<'de> {
             .get(name)
             .expect(&format!("Undefined property: {name}"))
     }
+    pub fn set(&mut self, name: &'de str, value: LoxValue<'de>) {
+        println!("setting");
+        self.fields.insert(name, value);
+    }
 }

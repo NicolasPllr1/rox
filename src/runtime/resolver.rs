@@ -202,6 +202,16 @@ impl<'a> Resolver<'a> {
                 object,
                 name: _,
             } => self.resolve_expr(object),
+
+            Expr::Set {
+                id: _,
+                object,
+                name: _,
+                value,
+            } => {
+                self.resolve_expr(object);
+                self.resolve_expr(value);
+            }
         }
     }
 

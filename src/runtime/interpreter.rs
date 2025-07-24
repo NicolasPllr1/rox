@@ -323,6 +323,19 @@ impl<'de> Interpreter<'de> {
                 LoxValue::Class(class) => class.get(name.lexeme).clone(), // NOTE: necesary clone ?
                 _ => panic!("Only instances have properties"),
             },
+            Expr::Set {
+                id: _,
+                object,
+                name,
+                value,
+            } => match self.evaluate_expr(object) {
+                LoxValue::Class(mut class) => {
+                    let runtime_value = self.evaluate_expr(value);
+                    class.set(name.lexeme, runtime_value);
+                    runtime_value
+                }
+                _ => panic!("Only instances have properties"),
+            },
         }
     }
 }

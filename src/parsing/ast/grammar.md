@@ -21,7 +21,7 @@ block -> "{" + declaration* + "}" ;
 returnStmt -> "return" + expression? + ";" ;
 
 expression -> assignement ;
-assignment -> IDENTIFIER "=" assignement | logic_or ;
+assignment -> ( call "." )? IDENTIFIER "=" assignement | logic_or ;
 
 logic_or -> logic_and ( "or" logic_and )* ;
 logic_and -> equality ( "and" equality )* ;

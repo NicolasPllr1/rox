@@ -618,17 +618,28 @@ impl Parser {
             Some(&tok_equal) if tok_equal.token_type == TokenType::Equal => {
                 tokens.next();
                 let value = self.assignment(tokens)?;
-                if let Expr::Variable { id: _, name } = expr {
-                    Ok(Expr::Assign {
+                match expr {
+                    Expr::Variable { id: _, name } => Ok(Expr::Assign {
                         id: self.new_id(), // NOTE: new id here?
                         name,
                         value: Box::new(value),
-                    })
-                } else {
-                    Err(ParserError {
+                    }),
+                    Expr::Get {
+                        id: _,
+                        ref object,
+                        name,
+                    } => Ok(
+                        Expr::Set {
+                            id: self.new_id(),
+                            object: object.clone(),
+                            name,
+                            value: Box::new(expr),
+                        }, // NOTE: neccesary clone ?
+                    ),
+                    _ => Err(ParserError {
                         msg: "Invalid assignement target".to_owned(),
                         tok: Some(*tok_equal),
-                    })
+                    }),
                 }
             }
             _ => Ok(expr),

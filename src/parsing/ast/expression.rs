@@ -59,6 +59,12 @@ pub enum Expr<'de> {
         object: Box<Expr<'de>>,
         name: Token<'de>,
     },
+    Set {
+        id: usize,
+        object: Box<Expr<'de>>,
+        name: Token<'de>,
+        value: Box<Expr<'de>>,
+    },
 }
 
 impl Expr<'_> {
@@ -94,11 +100,16 @@ impl Expr<'_> {
                 callee: _,
                 arguments: _,
             } => *id,
-
             Expr::Get {
                 id,
                 object: _,
                 name: _,
+            } => *id,
+            Expr::Set {
+                id,
+                object: _,
+                name: _,
+                value: _,
             } => *id,
         }
     }
