@@ -54,6 +54,11 @@ pub enum Expr<'de> {
         callee: Box<Expr<'de>>,
         arguments: Box<Vec<Expr<'de>>>,
     },
+    Get {
+        id: usize,
+        object: Box<Expr<'de>>,
+        name: Token<'de>,
+    },
 }
 
 impl Expr<'_> {
@@ -88,6 +93,12 @@ impl Expr<'_> {
                 id,
                 callee: _,
                 arguments: _,
+            } => *id,
+
+            Expr::Get {
+                id,
+                object: _,
+                name: _,
             } => *id,
         }
     }

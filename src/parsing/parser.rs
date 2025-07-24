@@ -841,6 +841,8 @@ impl Parser {
         loop {
             match tokens.peek() {
                 Some(&tok) if tok.token_type == TokenType::LeftParen => {
+                    // Parse function call
+
                     tokens.next(); // consume left parenthesis '('
                     let args = self.parse_call_args(tokens)?;
 
@@ -858,6 +860,25 @@ impl Parser {
                                 tok: tokens.next().copied(),
                             })
                         }
+                    }
+                }
+                Some(&tok) if tok.token_type == TokenType::Dot => {
+                    // Parse getter call on a class instance
+                    tokens.next(); // consume the dot '.'
+
+                    let name = match Parser::match_next_token_type(tokens, TokenType::Identifier) {
+                        Some(tok) => tok,
+                        _ => {
+                            return Err(ParserError {
+                                msg: "getter call expects an identifier after the dot".to_owned(),
+                                tok: tokens.next().copied(),
+                            })
+                        }
+                    };
+                    expr = Expr::Get {
+                        id: self.new_id(),
+                        object: Box::new(expr),
+                        name,
                     }
                 }
                 _ => break,

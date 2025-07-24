@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::panic;
 use std::rc::Rc;
 
 use crate::parsing::ast::declaration::Declaration;
@@ -68,7 +69,10 @@ impl<'de> Interpreter<'de> {
                 methods: _,
             } => {
                 self.env.borrow_mut().define(name.lexeme, LoxValue::Nil);
-                let class = LoxClass { name: name.lexeme };
+                let class = LoxClass {
+                    name: name.lexeme,
+                    fields: HashMap::new(),
+                };
                 let class_value = LoxValue::Class(class);
                 self.env.borrow_mut().assign(name, &class_value);
                 Ok(LoxValue::Nil)
@@ -310,6 +314,14 @@ impl<'de> Interpreter<'de> {
                     value.clone()
                 }
                 _ => panic!("expect callee to be callable"),
+            },
+            Expr::Get {
+                id: _,
+                object,
+                name,
+            } => match self.evaluate_expr(object) {
+                LoxValue::Class(class) => class.get(name.lexeme).clone(), // NOTE: necesary clone ?
+                _ => panic!("Only instances have properties"),
             },
         }
     }

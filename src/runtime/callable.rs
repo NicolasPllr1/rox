@@ -1,4 +1,4 @@
-use std::{cell::RefCell, iter::zip, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, iter::zip, rc::Rc};
 
 use crate::{Env, EvaluationError, Interpreter, LoxValue, Stmt, Token};
 
@@ -51,4 +51,11 @@ impl<'de> Callable<'de> for LoxCallable<'de> {
 #[derive(Debug, Clone, PartialEq)]
 pub struct LoxClass<'de> {
     pub name: &'de str,
+    pub fields: HashMap<&'de str, LoxValue<'de>>,
+}
+
+impl<'de> LoxClass<'de> {
+    pub fn get(&self, name: &'de str) -> &LoxValue<'de> {
+        self.fields.get(name).expect("Undefined property: {name}")
+    }
 }
