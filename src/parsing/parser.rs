@@ -804,6 +804,34 @@ impl Parser {
             _ => self.call(tokens),
         }
     }
+    fn parse_call_args<'de>(
+        &mut self,
+        tokens: &mut Peekable<Iter<Token<'de>>>,
+    ) -> Result<Vec<Expr<'de>>, ParserError<'de>> {
+        let mut args = Vec::new();
+
+        // Parse arguments
+        match tokens.peek() {
+            Some(tok) if tok.token_type != TokenType::RightParen => {
+                // first arg
+                args.push(self.expression(tokens)?);
+
+                // follow-up args
+                while Parser::match_next_token_type(tokens, TokenType::Comma).is_some() {
+                    if args.len() < 255 {
+                        args.push(self.expression(tokens)?);
+                    } else {
+                        return Err(ParserError {
+                            msg: "Can't have more than 255 arguments".to_owned(),
+                            tok: tokens.next().copied(), // NOTE: the use of cloned()
+                        });
+                    }
+                }
+            }
+            _ => (),
+        }
+        Ok(args)
+    }
     fn call<'de>(
         &mut self,
         tokens: &mut Peekable<Iter<Token<'de>>>,
@@ -812,28 +840,7 @@ impl Parser {
 
         while Parser::match_next_token_type(tokens, TokenType::LeftParen).is_some() {
             // left parenthesis just got consumed in the check
-            let mut args = Vec::new();
-
-            // Parse arguments
-            match tokens.peek() {
-                Some(tok) if tok.token_type != TokenType::RightParen => {
-                    // first arg
-                    args.push(self.expression(tokens)?);
-
-                    // follow-up args
-                    while Parser::match_next_token_type(tokens, TokenType::Comma).is_some() {
-                        if args.len() < 255 {
-                            args.push(self.expression(tokens)?);
-                        } else {
-                            return Err(ParserError {
-                                msg: "Can't have more than 255 arguments".to_owned(),
-                                tok: tokens.next().copied(), // NOTE: the use of cloned()
-                            });
-                        }
-                    }
-                }
-                _ => (),
-            }
+            let args = self.parse_call_args(tokens)?;
 
             match Parser::match_next_token_type(tokens, TokenType::RightParen) {
                 Some(_) => {
