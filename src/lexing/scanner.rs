@@ -137,6 +137,7 @@ impl Scanner<'_> {
                             && *nxt_l != ';'
                             && *nxt_l != ')'
                             && *nxt_l != '('
+                            && *nxt_l != '.'
                         {
                             chars.next();
                             current_idx += 1;
