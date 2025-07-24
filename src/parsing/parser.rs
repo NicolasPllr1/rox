@@ -838,27 +838,31 @@ impl Parser {
     ) -> Result<Expr<'de>, ParserError<'de>> {
         let mut expr = self.primary(tokens)?;
 
-        while Parser::match_next_token_type(tokens, TokenType::LeftParen).is_some() {
-            // left parenthesis just got consumed in the check
-            let args = self.parse_call_args(tokens)?;
+        loop {
+            match tokens.peek() {
+                Some(&tok) if tok.token_type == TokenType::LeftParen => {
+                    tokens.next(); // consume left parenthesis '('
+                    let args = self.parse_call_args(tokens)?;
 
-            match Parser::match_next_token_type(tokens, TokenType::RightParen) {
-                Some(_) => {
-                    expr = Expr::Call {
-                        id: self.new_id(),
-                        callee: Box::new(expr),
-                        arguments: Box::new(args),
+                    match Parser::match_next_token_type(tokens, TokenType::RightParen) {
+                        Some(_) => {
+                            expr = Expr::Call {
+                                id: self.new_id(),
+                                callee: Box::new(expr),
+                                arguments: Box::new(args),
+                            }
+                        }
+                        None => {
+                            return Err(ParserError {
+                                msg: "function call expects ')' after arguments".to_owned(),
+                                tok: tokens.next().copied(),
+                            })
+                        }
                     }
                 }
-                None => {
-                    return Err(ParserError {
-                        msg: "function call expects ')' after arguments".to_owned(),
-                        tok: tokens.next().copied(),
-                    })
-                }
+                _ => break,
             }
         }
-
         Ok(expr)
     }
     fn primary<'de>(
