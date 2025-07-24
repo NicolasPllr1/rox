@@ -56,6 +56,8 @@ pub struct LoxClass<'de> {
 
 impl<'de> LoxClass<'de> {
     pub fn get(&self, name: &'de str) -> &LoxValue<'de> {
-        self.fields.get(name).expect("Undefined property: {name}")
+        self.fields
+            .get(name)
+            .expect(&format!("Undefined property: {name}"))
     }
 }
