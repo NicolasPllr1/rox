@@ -38,6 +38,8 @@ fn run(source: &str) -> Result<(), InterpreterError<'_>> {
         println!("{decl:?}");
     }
 
+    dbg!(&declarations);
+
     println!("\nResolving:");
     let mut resolver = Resolver::default();
     resolver.resolve(&declarations);
@@ -76,7 +78,7 @@ impl fmt::Display for InterpreterError<'_> {
                 write!(f, "Parser Error: {}", e.msg)?;
                 if let Some(tok) = &e.tok {
                     // NOTE: why need to borrow here?
-                    write!(f, "at token {tok}")?;
+                    write!(f, " at token {tok:?}")?;
                 }
             }
 
