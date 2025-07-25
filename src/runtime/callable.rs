@@ -54,14 +54,38 @@ pub struct LoxClass<'de> {
     pub fields: HashMap<&'de str, LoxValue<'de>>,
 }
 
-impl<'de> LoxClass<'de> {
+impl<'de> Callable<'de> for LoxClass<'de> {
+    fn arity(&self) -> usize {
+        0
+    }
+    fn call(&self, _interpreter: &mut Interpreter<'de>, args: Vec<LoxValue<'de>>) -> LoxValue<'de> {
+        assert!(
+            args.len() == self.arity(),
+            "Wrong number of arguments passed"
+        );
+        LoxValue::Instance(Rc::new(RefCell::new(LoxInstance {
+            class: self.clone(), // NOTE: cloning for now
+        })))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LoxInstance<'de> {
+    pub class: LoxClass<'de>,
+}
+impl<'de> LoxInstance<'de> {
     pub fn get(&self, name: &'de str) -> &LoxValue<'de> {
-        self.fields
+        dbg!(&self.class.fields);
+        self.class
+            .fields
             .get(name)
             .expect(&format!("Undefined property: {name}"))
     }
     pub fn set(&mut self, name: &'de str, value: LoxValue<'de>) {
-        println!("setting");
-        self.fields.insert(name, value);
+        println!("setting name {name:?} to value {value:?}");
+        self.class.fields.insert(name, value);
+
+        let fields = &self.class.fields;
+        println!("fields after insert {fields:?}");
     }
 }

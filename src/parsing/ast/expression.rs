@@ -1,7 +1,9 @@
+use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
+use std::rc::Rc;
 
 use crate::lexing::token::{Token, TokenType};
-use crate::runtime::callable::{LoxCallable, LoxClass};
+use crate::runtime::callable::{LoxCallable, LoxClass, LoxInstance};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum LoxValue<'de> {
@@ -11,6 +13,7 @@ pub enum LoxValue<'de> {
     String(&'de str),
     Callable(LoxCallable<'de>),
     Class(LoxClass<'de>),
+    Instance(Rc<RefCell<LoxInstance<'de>>>),
 }
 
 #[derive(Debug, Clone)]

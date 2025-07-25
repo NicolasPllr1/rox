@@ -7,8 +7,8 @@ use crate::parsing::ast::expression::LoxValue;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Env<'de> {
-    enclosing: Option<Rc<RefCell<Env<'de>>>>, // parent environement. To implement scope.
-    values: HashMap<&'de str, LoxValue<'de>>,
+    pub enclosing: Option<Rc<RefCell<Env<'de>>>>, // parent environement. To implement scope.
+    pub values: HashMap<&'de str, LoxValue<'de>>,
 }
 
 impl<'de> Env<'de> {
@@ -32,6 +32,7 @@ impl<'de> Env<'de> {
         self.values.insert(name, value);
     }
 
+    // TODO: delete plain `assign`, use instead `assign_at`
     pub fn assign(&mut self, name: &Token<'de>, value: &LoxValue<'de>) {
         if self.values.contains_key(name.lexeme) {
             self.values.insert(name.lexeme, value.clone());
@@ -85,9 +86,10 @@ impl<'de> Env<'de> {
             .clone()
     }
 
-    pub fn assign_at(&mut self, distance: &usize, name: &Token<'de>, value: &LoxValue<'de>) {
+    pub fn assign_at(&mut self, distance: &usize, name: &'de str, value: &LoxValue<'de>) {
         if *distance == 0 {
-            self.values.insert(name.lexeme, value.clone());
+            self.values.insert(name, value.clone());
+            return;
         }
 
         // walk up the chain of enclosing environments
@@ -118,7 +120,7 @@ impl<'de> Env<'de> {
         }
         // finally, get the name in the found environment
         let mut env = env_rc.borrow_mut();
-        env.values.insert(name.lexeme, value.clone());
+        env.values.insert(name, value.clone());
     }
 }
 

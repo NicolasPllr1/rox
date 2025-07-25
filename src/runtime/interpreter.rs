@@ -74,7 +74,7 @@ impl<'de> Interpreter<'de> {
                     fields: HashMap::new(),
                 };
                 let class_value = LoxValue::Class(class);
-                self.env.borrow_mut().assign(name, &class_value);
+                self.env.borrow_mut().assign(name, &class_value); // NOTE: assign vs assign_at ?
                 Ok(LoxValue::Nil)
             }
         }
@@ -268,7 +268,10 @@ impl<'de> Interpreter<'de> {
             Expr::Assign { id: _, name, value } => {
                 let final_value = self.evaluate_expr(value);
                 match self.locals.get(expr) {
-                    Some(d) => self.env.borrow_mut().assign_at(d, name, &final_value),
+                    Some(d) => self
+                        .env
+                        .borrow_mut()
+                        .assign_at(d, name.lexeme, &final_value),
                     None => panic!("Cound not find {expr:?} in resolved local variables"),
                 }
                 final_value
@@ -313,6 +316,11 @@ impl<'de> Interpreter<'de> {
                     let value = lox_callable.call(self, args);
                     value.clone()
                 }
+                LoxValue::Class(lox_class) => {
+                    // NOTE: no args for now
+                    let args = Vec::new();
+                    lox_class.call(self, args)
+                }
                 _ => panic!("expect callee to be callable"),
             },
             Expr::Get {
@@ -320,7 +328,9 @@ impl<'de> Interpreter<'de> {
                 object,
                 name,
             } => match self.evaluate_expr(object) {
-                LoxValue::Class(class) => class.get(name.lexeme).clone(), // NOTE: necesary clone ?
+                LoxValue::Instance(instance) => {
+                    instance.borrow().get(name.lexeme).clone() // NOTE: necesary clone ?
+                }
                 _ => panic!("Only instances have properties"),
             },
             Expr::Set {
@@ -329,12 +339,12 @@ impl<'de> Interpreter<'de> {
                 name,
                 value,
             } => match self.evaluate_expr(object) {
-                LoxValue::Class(mut class) => {
-                    let runtime_value = self.evaluate_expr(value);
-                    class.set(name.lexeme, runtime_value);
-                    runtime_value
+                LoxValue::Instance(instance) => {
+                    let runtime_val = self.evaluate_expr(value);
+                    instance.borrow_mut().set(name.lexeme, runtime_val.clone());
+                    runtime_val
                 }
-                _ => panic!("Only instances have properties"),
+                _ => panic!("Only instances have fields"),
             },
         }
     }
