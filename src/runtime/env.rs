@@ -53,7 +53,11 @@ impl<'de> Env<'de> {
                 .clone();
         }
         // walk up the chain of enclosing environments
-        let mut env_rc = Rc::clone(self.enclosing.as_ref().unwrap_or_else(|| panic!("no enclosing environment at distance 1 for {name}")));
+        let mut env_rc = Rc::clone(
+            self.enclosing
+                .as_ref()
+                .unwrap_or_else(|| panic!("no enclosing environment at distance 1 for {name}")),
+        );
         let mut level = 1;
         while level < *distance {
             // take borrow to access enclosing
@@ -62,8 +66,12 @@ impl<'de> Env<'de> {
                 borrowed
                     .enclosing
                     .as_ref()
-                    .unwrap_or_else(|| panic!("no enclosing environment at distance {} for {name}",
-                        level + 1))
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "no enclosing environment at distance {} for {name}",
+                            level + 1
+                        )
+                    })
                     .clone()
             };
             env_rc = enclosing_ref;
@@ -83,7 +91,11 @@ impl<'de> Env<'de> {
         }
 
         // walk up the chain of enclosing environments
-        let mut env_rc = Rc::clone(self.enclosing.as_ref().unwrap_or_else(|| panic!("no enclosing environment at distance 1 for {name}")));
+        let mut env_rc = Rc::clone(
+            self.enclosing
+                .as_ref()
+                .unwrap_or_else(|| panic!("no enclosing environment at distance 1 for {name}")),
+        );
         let mut level = 1;
         while level < *distance {
             // take borrow to access enclosing
@@ -92,9 +104,13 @@ impl<'de> Env<'de> {
                 borrowed
                     .enclosing
                     .as_ref()
-                    .unwrap_or_else(|| panic!("no enclosing environment at distance {} for {}",
-                        level + 1,
-                        name))
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "no enclosing environment at distance {} for {}",
+                            level + 1,
+                            name
+                        )
+                    })
                     .clone()
             };
             env_rc = enclosing_ref;
