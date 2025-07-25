@@ -626,14 +626,14 @@ impl Parser {
                     }),
                     Expr::Get {
                         id: _,
-                        ref object,
+                        object,
                         name,
                     } => Ok(
                         Expr::Set {
                             id: self.new_id(),
                             object: object.clone(),
                             name,
-                            value: Box::new(expr),
+                            value: Box::new(value),
                         }, // NOTE: neccesary clone ?
                     ),
                     _ => Err(ParserError {
