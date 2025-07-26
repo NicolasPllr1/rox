@@ -915,7 +915,9 @@ impl Parser {
                 }),
                 TokenType::String => Ok(Expr::Literal {
                     id: self.new_id(),
-                    value: LoxValue::String(tok.literal.expect("String should have literal")),
+                    value: LoxValue::String(
+                        tok.literal.expect("String should have literal").to_string(),
+                    ),
                 }),
                 TokenType::True => Ok(Expr::Literal {
                     id: self.new_id(),

@@ -11,7 +11,7 @@ pub enum LoxValue<'de> {
     Bool(bool),
     Nil,
     Number(f32),
-    String(&'de str),
+    String(String),
     Callable(LoxCallable<'de>),
     Class(LoxClass<'de>),
     Instance(Rc<RefCell<LoxInstance<'de>>>),

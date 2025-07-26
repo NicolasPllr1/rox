@@ -204,9 +204,14 @@ impl<'de> Interpreter<'de> {
                 BinaryOp::Plus => match (self.evaluate_expr(left), self.evaluate_expr(right)) {
                     (LoxValue::Number(n_left), LoxValue::Number(n_right)) => {
                         LoxValue::Number(n_left + n_right)
-                    }
+                    },
+                    (LoxValue::String(s_left), LoxValue::String(s_right)) => {
+                        let mut s = String::from(s_left);
+                        s.push_str(&s_right);
+                        LoxValue::String(s)
+                    },
                     (a, b) => panic!(
-                        "Plus binary operator '+' expect two numbers as operands, got: {a:?}, {b:?}"
+                        "Plus binary operator '+' expect either two numbers or two strings as operands, got: {a:?}, {b:?}"
                     ),
                 },
                 BinaryOp::Minus => match (self.evaluate_expr(left), self.evaluate_expr(right)) {
