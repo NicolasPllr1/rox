@@ -1,6 +1,6 @@
 class DevonshireCream {
   serveOn() {
-    return "Scones";
+    print "Scones";
   }
 }
 
@@ -12,3 +12,5 @@ print devon;
 devon.hello = "hello world";
 print devon;
 print devon.hello;
+
+devon.serveOn();

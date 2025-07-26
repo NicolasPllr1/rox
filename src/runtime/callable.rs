@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, iter::zip, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, fmt::Display, iter::zip, rc::Rc};
 
 use crate::{Env, EvaluationError, Interpreter, LoxValue, Stmt, Token};
 
@@ -52,6 +52,13 @@ impl<'de> Callable<'de> for LoxCallable<'de> {
 pub struct LoxClass<'de> {
     pub name: &'de str,
     pub fields: HashMap<&'de str, LoxValue<'de>>,
+    pub methods: HashMap<&'de str, LoxValue<'de>>, // NOTE: should store callable ?
+}
+impl Display for LoxClass<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = self.name;
+        write!(f, "Class: {name}")
+    }
 }
 
 impl<'de> Callable<'de> for LoxClass<'de> {
@@ -73,19 +80,32 @@ impl<'de> Callable<'de> for LoxClass<'de> {
 pub struct LoxInstance<'de> {
     pub class: LoxClass<'de>,
 }
+
+impl Display for LoxInstance<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let class = &self.class;
+        let name = class.name;
+        write!(f, "Class Instance: {name}")
+    }
+}
+
 impl<'de> LoxInstance<'de> {
     pub fn get(&self, name: &'de str) -> &LoxValue<'de> {
-        dbg!(&self.class.fields);
-        self.class
-            .fields
-            .get(name)
-            .expect(&format!("Undefined property: {name}"))
+        if let Some(val) = self.class.fields.get(name) {
+            val
+        } else {
+            self.class
+                .methods
+                .get(name)
+                .expect("Unknown property {name}")
+        }
     }
-    pub fn set(&mut self, name: &'de str, value: LoxValue<'de>) {
-        println!("setting name {name:?} to value {value:?}");
-        self.class.fields.insert(name, value);
 
-        let fields = &self.class.fields;
-        println!("fields after insert {fields:?}");
+    // pub fn get_method(&self, name: &'de str) -> Option<LoxCallable<'de>> {
+    //     self.class.methods.get(name).cloned() // HACK: cloning for now
+    // }
+
+    pub fn set(&mut self, name: &'de str, value: LoxValue<'de>) {
+        self.class.fields.insert(name, value);
     }
 }

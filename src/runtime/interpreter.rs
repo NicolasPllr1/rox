@@ -66,12 +66,35 @@ impl<'de> Interpreter<'de> {
             Declaration::ClassDecl {
                 id: _,
                 name,
-                methods: _,
+                methods,
             } => {
                 self.env.borrow_mut().define(name.lexeme, LoxValue::Nil);
+
+                let mut methods_values = HashMap::new();
+                for decl in methods {
+                    if let Declaration::FuncDecl {
+                        id: _,
+                        name,
+                        params,
+                        body,
+                    } = *decl.clone()
+                    // HACK: clone ...
+                    {
+                        let callable = LoxCallable {
+                            function_body: Box::new(body),
+                            params: Box::new(params),
+                            closure: Rc::clone(&self.env),
+                        };
+                        methods_values.insert(name.lexeme, LoxValue::Callable(callable));
+                    } else {
+                        panic!("method declaration should be a function")
+                    };
+                }
+
                 let class = LoxClass {
                     name: name.lexeme,
                     fields: HashMap::new(),
+                    methods: methods_values,
                 };
                 let class_value = LoxValue::Class(class);
                 self.env.borrow_mut().assign(name, &class_value); // NOTE: assign vs assign_at ?
@@ -91,7 +114,7 @@ impl<'de> Interpreter<'de> {
             }
             Stmt::PrintStmt { id: _, expr } => {
                 let val = self.evaluate_expr(expr);
-                println!("{val:?}");
+                println!("{val}");
                 Ok(LoxValue::Nil)
             }
 
@@ -328,9 +351,7 @@ impl<'de> Interpreter<'de> {
                 object,
                 name,
             } => match self.evaluate_expr(object) {
-                LoxValue::Instance(instance) => {
-                    instance.borrow().get(name.lexeme).clone() // NOTE: necesary clone ?
-                }
+                LoxValue::Instance(instance) => instance.borrow().get(name.lexeme).clone(),
                 _ => panic!("Only instances have properties"),
             },
             Expr::Set {

@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::fmt::Display;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
@@ -14,6 +15,29 @@ pub enum LoxValue<'de> {
     Callable(LoxCallable<'de>),
     Class(LoxClass<'de>),
     Instance(Rc<RefCell<LoxInstance<'de>>>),
+}
+
+impl Display for LoxValue<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LoxValue::Bool(b) => write!(f, "{b}"),
+            LoxValue::Nil => write!(f, "Nil"),
+            LoxValue::Number(n) => write!(f, "{n}"),
+            LoxValue::String(s) => write!(f, "{s}"),
+            LoxValue::Callable(lox_callable) => {
+                let fn_body = &lox_callable.function_body;
+                let params = &lox_callable.params;
+                write!(f, "Callable:\nParameters: {params:?}\nBody: {fn_body:?}")
+            }
+            LoxValue::Class(lox_class) => {
+                write!(f, "{lox_class}")
+            }
+            LoxValue::Instance(instance_ref) => {
+                let instance = instance_ref.borrow();
+                write!(f, "{instance}")
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

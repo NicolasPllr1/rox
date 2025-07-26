@@ -12,6 +12,7 @@ pub struct Resolver<'a> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum FnKind {
     Function,
+    Method,
 }
 
 impl<'a> Resolver<'a> {
@@ -34,7 +35,7 @@ impl<'a> Resolver<'a> {
                 self.declare(name);
                 self.define(name);
 
-                self.resolve_function(decl);
+                self.resolve_function(decl, FnKind::Function);
             }
             Declaration::StmtDecl { id: _, stmt } => {
                 self.resolve_stmt(stmt);
@@ -54,10 +55,14 @@ impl<'a> Resolver<'a> {
             Declaration::ClassDecl {
                 id: _,
                 name,
-                methods: _,
+                methods,
             } => {
                 self.declare(name);
                 self.define(name);
+
+                methods
+                    .iter()
+                    .for_each(|m| self.resolve_function(m, FnKind::Method));
             }
         }
     }
@@ -112,7 +117,7 @@ impl<'a> Resolver<'a> {
         // self.end_scope();
     }
 
-    fn resolve_function(&mut self, fn_decl: &Declaration<'a>) {
+    fn resolve_function(&mut self, fn_decl: &Declaration<'a>, fn_kind: FnKind) {
         match fn_decl {
             Declaration::FuncDecl {
                 id: _,
@@ -122,7 +127,7 @@ impl<'a> Resolver<'a> {
             } => {
                 let previous_fn_kind = self.current_fn;
                 // update fn kind
-                self.current_fn = Some(FnKind::Function);
+                self.current_fn = Some(fn_kind);
 
                 // resolve fn
                 self.begin_scope();
