@@ -946,6 +946,10 @@ impl Parser {
                     id: self.new_id(),
                     name: *tok,
                 }),
+                TokenType::This => Ok(Expr::This {
+                    id: self.new_id(),
+                    keyword: *tok,
+                }),
                 _ => Err(ParserError {
                     msg: "Expect expression".into(),
                     tok: Some(*tok), // NOTE: after cloning, no need to dereference with *, why?

@@ -60,9 +60,22 @@ impl<'a> Resolver<'a> {
                 self.declare(name);
                 self.define(name);
 
+                // new scope for all methods
+                self.begin_scope();
+                let nb_scopes = self.scopes.len();
+
+                // add 'this' in the methods enclosing scope
+                self.scopes
+                    .get_mut(nb_scopes - 1)
+                    .expect("expect at least one scope")
+                    .insert("this", true);
+
+                // resolve methods
                 methods
                     .iter()
                     .for_each(|m| self.resolve_function(m, FnKind::Method));
+
+                self.end_scope();
             }
         }
     }
@@ -217,6 +230,7 @@ impl<'a> Resolver<'a> {
                 self.resolve_expr(object);
                 self.resolve_expr(value);
             }
+            Expr::This { id: _, keyword } => self.resolve_local(expr, keyword),
         }
     }
 

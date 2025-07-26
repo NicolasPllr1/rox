@@ -351,7 +351,27 @@ impl<'de> Interpreter<'de> {
                 object,
                 name,
             } => match self.evaluate_expr(object) {
-                LoxValue::Instance(instance) => instance.borrow().get(name.lexeme).clone(),
+                LoxValue::Instance(instance) => {
+                    let property = instance.borrow().get(name.lexeme).clone();
+
+                    // If property is a method: bind it to 'this'
+                    if let LoxValue::Callable(LoxCallable {
+                        function_body,
+                        params,
+                        closure,
+                    }) = property
+                    {
+                        let mut new_closure = Env::new_from(&closure);
+                        new_closure.define("this", LoxValue::Instance(instance));
+                        LoxValue::Callable(LoxCallable {
+                            function_body,
+                            params,
+                            closure: Rc::new(RefCell::new(new_closure)),
+                        })
+                    } else {
+                        property
+                    }
+                }
                 _ => panic!("Only instances have properties"),
             },
             Expr::Set {
@@ -366,6 +386,10 @@ impl<'de> Interpreter<'de> {
                     runtime_val
                 }
                 _ => panic!("Only instances have fields"),
+            },
+            Expr::This { id: _, keyword } => match self.locals.get(expr) {
+                Some(d) => self.env.borrow().get_at(d, keyword.lexeme),
+                None => panic!("unknown variable: {expr:?}"),
             },
         }
     }

@@ -92,6 +92,10 @@ pub enum Expr<'de> {
         name: Token<'de>,
         value: Box<Expr<'de>>,
     },
+    This {
+        id: usize,
+        keyword: Token<'de>,
+    },
 }
 
 impl Expr<'_> {
@@ -138,6 +142,7 @@ impl Expr<'_> {
                 name: _,
                 value: _,
             } => *id,
+            Expr::This { id, keyword: _ } => *id,
         }
     }
 }

@@ -8,7 +8,6 @@ pub trait Callable<'a> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-// NOTE: check this lifetime + move this to another module
 pub struct LoxCallable<'de> {
     pub function_body: Box<Stmt<'de>>,
     pub params: Box<Vec<Token<'de>>>, // all identifiers ?
@@ -94,16 +93,14 @@ impl<'de> LoxInstance<'de> {
         if let Some(val) = self.class.fields.get(name) {
             val
         } else {
-            self.class
+            let method = self
+                .class
                 .methods
                 .get(name)
-                .expect("Unknown property {name}")
+                .expect("Unknown property {name}");
+            method
         }
     }
-
-    // pub fn get_method(&self, name: &'de str) -> Option<LoxCallable<'de>> {
-    //     self.class.methods.get(name).cloned() // HACK: cloning for now
-    // }
 
     pub fn set(&mut self, name: &'de str, value: LoxValue<'de>) {
         self.class.fields.insert(name, value);
