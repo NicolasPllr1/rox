@@ -7,12 +7,18 @@ pub struct Resolver<'a> {
     pub scopes: Vec<HashMap<&'a str, bool>>, // stack of current scopes
     pub locals: HashMap<Expr<'a>, usize>,
     pub current_fn: Option<FnKind>,
+    pub current_class: Option<ClassKind>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum FnKind {
     Function,
     Method,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum ClassKind {
+    Class,
 }
 
 impl<'a> Resolver<'a> {
@@ -60,6 +66,10 @@ impl<'a> Resolver<'a> {
                 self.declare(name);
                 self.define(name);
 
+                let previous_class_kind = self.current_class;
+                // update class kind
+                self.current_class = Some(ClassKind::Class);
+
                 // new scope for all methods
                 self.begin_scope();
                 let nb_scopes = self.scopes.len();
@@ -76,6 +86,9 @@ impl<'a> Resolver<'a> {
                     .for_each(|m| self.resolve_function(m, FnKind::Method));
 
                 self.end_scope();
+
+                // restaure class kind
+                self.current_class = previous_class_kind;
             }
         }
     }
@@ -230,7 +243,13 @@ impl<'a> Resolver<'a> {
                 self.resolve_expr(object);
                 self.resolve_expr(value);
             }
-            Expr::This { id: _, keyword } => self.resolve_local(expr, keyword),
+            Expr::This { id: _, keyword } => {
+                assert!(
+                    self.current_class == Some(ClassKind::Class),
+                    "can't use 'this' outside of a class"
+                );
+                self.resolve_local(expr, keyword)
+            }
         }
     }
 
