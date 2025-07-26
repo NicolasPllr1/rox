@@ -34,10 +34,6 @@ fn run(source: &str) -> Result<(), InterpreterError<'_>> {
     println!("\nParsing:");
     let mut parser = Parser::new();
     let declarations = parser.parse(&tokens)?;
-    for decl in &declarations {
-        println!("{decl:?}");
-    }
-
     dbg!(&declarations);
 
     println!("\nResolving:");
