@@ -12,6 +12,7 @@ pub struct LoxCallable<'de> {
     pub function_body: Box<Stmt<'de>>,
     pub params: Box<Vec<Token<'de>>>, // all identifiers ?
     pub closure: Rc<RefCell<Env<'de>>>,
+    pub is_initializer: bool,
 }
 
 impl<'de> Callable<'de> for LoxCallable<'de> {
@@ -43,7 +44,11 @@ impl<'de> Callable<'de> for LoxCallable<'de> {
 
         // reset interpreter env and return the function return value
         interpreter.env = original_env;
-        final_value
+
+        match self.is_initializer {
+            true => self.closure.borrow().get_at(&0, "this"),
+            false => final_value,
+        }
     }
 }
 

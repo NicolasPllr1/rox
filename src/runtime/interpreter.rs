@@ -55,8 +55,8 @@ impl<'de> Interpreter<'de> {
                 let callable_fn = LoxCallable {
                     function_body: Box::new(body.clone()), // NOTE: clean this cloning mess
                     params: Box::new(params.clone()),
-                    closure: Rc::clone(&self.env), // capture the current environament at
-                                                   // declaration-time
+                    closure: Rc::clone(&self.env), // capture the current environament at declaration-time
+                    is_initializer: false,         // only a method can be an initializer
                 };
                 self.env
                     .borrow_mut()
@@ -84,6 +84,7 @@ impl<'de> Interpreter<'de> {
                             function_body: Box::new(body),
                             params: Box::new(params),
                             closure: Rc::clone(&self.env),
+                            is_initializer: name.lexeme == "init",
                         };
                         methods_values.insert(name.lexeme, LoxValue::Callable(callable));
                     } else {
@@ -364,6 +365,7 @@ impl<'de> Interpreter<'de> {
                         function_body,
                         params,
                         closure,
+                        is_initializer,
                     }) = property
                     {
                         let mut new_closure = Env::new_from(&closure);
@@ -372,6 +374,8 @@ impl<'de> Interpreter<'de> {
                             function_body,
                             params,
                             closure: Rc::new(RefCell::new(new_closure)),
+                            is_initializer,
+
                         })
                     } else {
                         property

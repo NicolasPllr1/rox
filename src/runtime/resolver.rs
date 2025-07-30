@@ -14,6 +14,7 @@ pub struct Resolver<'a> {
 pub enum FnKind {
     Function,
     Method,
+    Initializer,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -107,6 +108,10 @@ impl<'a> Resolver<'a> {
                 );
 
                 if let Some(return_expr) = maybe_return_expr {
+                    assert!(
+                        self.current_fn != Some(FnKind::Initializer),
+                        "Can't return a value from an initializer."
+                    );
                     self.resolve_expr(return_expr);
                 }
             }
@@ -147,13 +152,18 @@ impl<'a> Resolver<'a> {
         match fn_decl {
             Declaration::FuncDecl {
                 id: _,
-                name: _,
+                name,
                 params,
                 body,
             } => {
                 let previous_fn_kind = self.current_fn;
                 // update fn kind
                 self.current_fn = Some(fn_kind);
+
+                // if method + "init", update fn kind to ''
+                if Some(FnKind::Method) == self.current_fn && name.lexeme == "init" {
+                    self.current_fn = Some(FnKind::Initializer);
+                }
 
                 // resolve fn
                 self.begin_scope();
