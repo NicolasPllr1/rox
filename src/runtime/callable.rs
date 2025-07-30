@@ -62,16 +62,33 @@ impl Display for LoxClass<'_> {
 
 impl<'de> Callable<'de> for LoxClass<'de> {
     fn arity(&self) -> usize {
-        0
+        match self.methods.get("init") {
+            Some(LoxValue::Callable(init_method)) => init_method.arity(),
+            Some(_) => panic!("expect method to be a callable"),
+            None => 0,
+        }
     }
-    fn call(&self, _interpreter: &mut Interpreter<'de>, args: Vec<LoxValue<'de>>) -> LoxValue<'de> {
+    fn call(&self, interpreter: &mut Interpreter<'de>, args: Vec<LoxValue<'de>>) -> LoxValue<'de> {
         assert!(
             args.len() == self.arity(),
             "Wrong number of arguments passed"
         );
-        LoxValue::Instance(Rc::new(RefCell::new(LoxInstance {
+        let instance = LoxValue::Instance(Rc::new(RefCell::new(LoxInstance {
             class: self.clone(), // NOTE: cloning for now
-        })))
+        })));
+
+        // execut 'init' method if any
+        if let Some(LoxValue::Callable(init_method)) = self.methods.get("init") {
+            let mut new_closure = Env::new_from(&init_method.closure);
+
+            new_closure.define("this", instance); // HACK: clone
+            let mut new_init_method = init_method.clone(); // HACK: clone
+            new_init_method.closure = Rc::new(RefCell::new(new_closure));
+
+            new_init_method.call(interpreter, args)
+        } else {
+            instance
+        }
     }
 }
 
@@ -97,7 +114,7 @@ impl<'de> LoxInstance<'de> {
                 .class
                 .methods
                 .get(name)
-                .expect("Unknown property {name}");
+                .expect(&format!("Unknown property: {name}"));
             method
         }
     }

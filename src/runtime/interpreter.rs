@@ -377,7 +377,7 @@ impl<'de> Interpreter<'de> {
                         property
                     }
                 }
-                _ => panic!("Only instances have properties"),
+                _ => panic!("Only instances have properties: {object:?}"),
             },
             Expr::Set {
                 id: _,
