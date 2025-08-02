@@ -86,6 +86,25 @@ impl Parser {
     ) -> Result<Declaration<'de>, ParserError<'de>> {
         let name = *tokens.next().expect("class should have a name, got None");
 
+        // parsing potential sub-class
+        let mut super_class = None;
+        if let Some(super_class_mark) = Parser::match_next_token_type(tokens, TokenType::Less) {
+            match Parser::match_next_token_type(tokens, TokenType::Identifier) {
+                Some(tok) => {
+                    super_class = Some(Expr::Variable {
+                        id: self.new_id(),
+                        name: tok,
+                    })
+                }
+                None => {
+                    return Err(ParserError {
+                        msg: "expect super-class name".to_string(),
+                        tok: Some(super_class_mark),
+                    })
+                }
+            }
+        }
+
         // check for opening '{'
         let _ = Parser::match_next_token_type(tokens, TokenType::LeftBrace).ok_or_else(|| {
             ParserError {
@@ -105,6 +124,7 @@ impl Parser {
             id: self.new_id(),
             name,
             methods,
+            super_class,
         })
     }
 
@@ -952,6 +972,28 @@ impl Parser {
                     id: self.new_id(),
                     keyword: *tok,
                 }),
+                TokenType::Super => {
+                    if Parser::match_next_token_type(tokens, TokenType::Dot).is_none() {
+                        return Err(ParserError {
+                            msg: "expect '.' after 'super'".to_string(),
+                            tok: tokens.next().copied(),
+                        });
+                    }
+
+                    match Parser::match_next_token_type(tokens, TokenType::Identifier) {
+                        Some(method_tok) => Ok(Expr::Super {
+                            id: self.new_id(),
+                            method: method_tok,
+                            keyword: *tok,
+                        }),
+                        None => {
+                            return Err(ParserError {
+                                msg: "expect super-class method name".to_string(),
+                                tok: tokens.next().copied(),
+                            })
+                        }
+                    }
+                }
                 _ => Err(ParserError {
                     msg: "Expect expression".into(),
                     tok: Some(*tok), // NOTE: after cloning, no need to dereference with *, why?

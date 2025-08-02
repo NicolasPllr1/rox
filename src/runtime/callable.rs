@@ -57,11 +57,27 @@ pub struct LoxClass<'de> {
     pub name: &'de str,
     pub fields: HashMap<&'de str, LoxValue<'de>>,
     pub methods: HashMap<&'de str, LoxValue<'de>>, // NOTE: should store callable ?
+    pub super_class: Option<Box<LoxClass<'de>>>,
 }
 impl Display for LoxClass<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let name = self.name;
         write!(f, "Class: {name}")
+    }
+}
+
+impl<'de> LoxClass<'de> {
+    pub fn get_method(&self, name: &'de str) -> &LoxValue<'de> {
+        match self.methods.get(name) {
+            Some(method) => method,
+            None => {
+                // reach for super
+                match self.super_class.as_ref() {
+                    Some(super_class) => super_class.get_method(name),
+                    _ => panic!("Method {name} not defined on class"),
+                }
+            }
+        }
     }
 }
 
@@ -112,15 +128,16 @@ impl Display for LoxInstance<'_> {
 
 impl<'de> LoxInstance<'de> {
     pub fn get(&self, name: &'de str) -> &LoxValue<'de> {
-        if let Some(val) = self.class.fields.get(name) {
-            val
-        } else {
-            let method = self
-                .class
-                .methods
-                .get(name)
-                .expect(&format!("Unknown property: {name}"));
-            method
+        match self.class.fields.get(name).or(self.class.methods.get(name)) {
+            Some(val) => val,
+            None => {
+                // reach for super-class methods
+                self.class
+                    .super_class
+                    .as_ref()
+                    .map(|class| class.get_method(name))
+                    .expect("Unknown property {name}")
+            }
         }
     }
 

@@ -67,8 +67,25 @@ impl<'de> Interpreter<'de> {
                 id: _,
                 name,
                 methods,
+                super_class,
             } => {
                 self.env.borrow_mut().define(name.lexeme, LoxValue::Nil);
+
+                let original_env = Rc::clone(&self.env);
+
+                let maybe_super_class_value = super_class
+                    .clone() // HACK: study this clone
+                    .map(|class_expr| self.evaluate_expr(&class_expr))
+                    .map(|maybe_class_value| match maybe_class_value {
+                        LoxValue::Class(super_class) => {
+                            self.env = Rc::new(RefCell::new(Env::new_from(&self.env)));
+                            self.env
+                                .borrow_mut()
+                                .define("super", LoxValue::Class(super_class.clone())); // HACK: can we avoid this clone?
+                            Box::new(super_class)
+                        }
+                        _ => panic!("Superclass must be a class."),
+                    });
 
                 let mut methods_values = HashMap::new();
                 for decl in methods {
@@ -78,12 +95,11 @@ impl<'de> Interpreter<'de> {
                         params,
                         body,
                     } = *decl.clone()
-                    // HACK: clone ...
                     {
                         let callable = LoxCallable {
                             function_body: Box::new(body),
                             params: Box::new(params),
-                            closure: Rc::clone(&self.env),
+                            closure: Rc::clone(&self.env), // HACK: clone ...
                             is_initializer: name.lexeme == "init",
                         };
                         methods_values.insert(name.lexeme, LoxValue::Callable(callable));
@@ -92,13 +108,19 @@ impl<'de> Interpreter<'de> {
                     };
                 }
 
+                if maybe_super_class_value.is_some() {
+                    self.env = original_env;
+                }
+
                 let class = LoxClass {
                     name: name.lexeme,
                     fields: HashMap::new(),
                     methods: methods_values,
+                    super_class: maybe_super_class_value,
                 };
                 let class_value = LoxValue::Class(class);
                 self.env.borrow_mut().assign(name, &class_value); // NOTE: assign vs assign_at ?
+
                 Ok(LoxValue::Nil)
             }
         }
@@ -400,6 +422,41 @@ impl<'de> Interpreter<'de> {
                 Some(d) => self.env.borrow().get_at(d, keyword.lexeme),
                 None => panic!("unknown variable: {expr:?}"),
             },
+            Expr::Super { id:_, keyword, method } => {
+
+                let (super_class, distance) = match self.locals.get(expr) {
+                    Some(d) => (self.env.borrow().get_at(d, keyword.lexeme), d),
+                    None => panic!("unknown variable: {expr:?}"),
+                };
+
+                let instance_val = self.env.borrow().get_at(&(distance-1), "this"); // sub-class
+                // instance of the super-class
+
+                let method_property = match super_class {
+                    LoxValue::Class(class) => class.get_method(method.lexeme).clone(),
+                    _ => panic!("'super' should refer to a class")
+                }; // should be a method, but could be a 'field' ?
+
+                // bind method to instance before returning it
+                // TODO: refacto function binding to an object into a functio defined
+                // on LoxCallable
+                match method_property {
+                    LoxValue::Callable(LoxCallable { function_body, params, closure, is_initializer }) => {
+                        let mut new_closure = Env::new_from(&closure);
+                        new_closure.define(method.lexeme, instance_val);
+                        LoxValue::Callable(LoxCallable {
+                            function_body,
+                            params,
+                            closure: Rc::new(RefCell::new(new_closure)),
+                            is_initializer,
+
+                        }
+                        )
+                    }
+                    _ =>     panic!("this should be a class instance")
+                }
+            }
+
         }
     }
 }

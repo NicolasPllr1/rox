@@ -4,7 +4,7 @@ program -> declaration* EOF ;
 
 declaration -> classDecl | funcDecl | varDecl | statement;
 
-classDecl -> "class" + IDENTIFIER + "{" + function* + "}"
+classDecl -> "class" + IDENTIFIER + ( "<" IDENTIFIER )? +  "{" + function* + "}"
 uncDecl -> "fun" function ;
 varDecl -> "var" + IDENTIFIER ( "=" expression )? ";" ;
 statement -> exprStmt | IfStmt | printstmt | whileStmt | block | returnStmt ;
@@ -34,4 +34,4 @@ unary -> ("!" | "-") unary | call ;
 call -> primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
 arguments -> expression ( "," expression )* ;
 
-primary -> NUMBER | STRING | "true" | "false" | "Nil" | "(" expression ")" | IDENTIFIER ;
+primary -> NUMBER | STRING | "true" | "false" | "Nil" | "(" expression ")" | IDENTIFIER | "super" . IDENTIFIER ;

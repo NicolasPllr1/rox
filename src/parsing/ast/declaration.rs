@@ -25,6 +25,7 @@ pub enum Declaration<'de> {
         id: usize,
         name: Token<'de>,
         methods: Vec<Box<Declaration<'de>>>, // vec of Declaration::FuncDecl
+        super_class: Option<Expr<'de>>,
     },
 }
 
@@ -47,6 +48,7 @@ impl Declaration<'_> {
                 id,
                 name: _,
                 methods: _,
+                super_class: _,
             } => *id,
         }
     }

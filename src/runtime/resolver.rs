@@ -63,6 +63,7 @@ impl<'a> Resolver<'a> {
                 id: _,
                 name,
                 methods,
+                super_class,
             } => {
                 self.declare(name);
                 self.define(name);
@@ -70,6 +71,32 @@ impl<'a> Resolver<'a> {
                 let previous_class_kind = self.current_class;
                 // update class kind
                 self.current_class = Some(ClassKind::Class);
+
+                if let Some(super_class_expr) = super_class {
+                    match super_class_expr {
+                        Expr::Variable {
+                            id: _,
+                            name: super_class_name,
+                        } => {
+                            if super_class_name == name {
+                                panic!("A class can't inherit from itself.")
+                            }
+
+                            self.resolve_expr(super_class_expr);
+
+                            self.begin_scope();
+
+                            let nb_scopes = self.scopes.len();
+                            self.scopes
+                                .get_mut(nb_scopes - 1)
+                                .expect("should have at least 1 scope (the class declaration scope")
+                                .insert("super", true);
+                        }
+                        _ => panic!("expect 'super' as a variable"), // HACK: don't want to panic
+                                                                     // this way, and should not
+                                                                     // happen although types don't show it
+                    }
+                }
 
                 // new scope for all methods
                 self.begin_scope();
@@ -87,6 +114,10 @@ impl<'a> Resolver<'a> {
                     .for_each(|m| self.resolve_function(m, FnKind::Method));
 
                 self.end_scope();
+
+                if super_class.is_some() {
+                    self.end_scope();
+                }
 
                 // restaure class kind
                 self.current_class = previous_class_kind;
@@ -259,6 +290,13 @@ impl<'a> Resolver<'a> {
                     "can't use 'this' outside of a class"
                 );
                 self.resolve_local(expr, keyword)
+            }
+            Expr::Super {
+                id: _,
+                keyword,
+                method: _,
+            } => {
+                self.resolve_local(expr, keyword);
             }
         }
     }
