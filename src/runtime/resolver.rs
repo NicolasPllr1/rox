@@ -20,6 +20,7 @@ pub enum FnKind {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ClassKind {
     Class,
+    SubClass,
 }
 
 impl<'a> Resolver<'a> {
@@ -81,6 +82,8 @@ impl<'a> Resolver<'a> {
                             if super_class_name == name {
                                 panic!("A class can't inherit from itself.")
                             }
+
+                            self.current_class = Some(ClassKind::SubClass);
 
                             self.resolve_expr(super_class_expr);
 
@@ -296,7 +299,13 @@ impl<'a> Resolver<'a> {
                 keyword,
                 method: _,
             } => {
-                self.resolve_local(expr, keyword);
+                match self.current_class {
+                    Some(ClassKind::SubClass) => self.resolve_local(expr, keyword), // happy path
+                    Some(ClassKind::Class) => {
+                        panic!("'super' can only be used within a class which has a super-class")
+                    }
+                    None => panic!("'super' can only be used within a class"),
+                }
             }
         }
     }
